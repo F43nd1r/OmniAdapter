@@ -1,0 +1,60 @@
+apply plugin: 'com.android.library'
+
+ext {
+    bintrayRepo = 'maven'
+    bintrayName = 'OmniAdapter'
+
+    publishedGroupId = 'com.faendir'
+    libraryName = 'OmniAdapter'
+    artifact = 'omniadapter'
+
+    libraryDescription = 'RecyclerView Adapter for multiple purposes'
+
+    siteUrl = 'https://github.com/F43nd1r/OmniAdapter'
+    gitUrl = 'https://github.com/F43nd1r/OmniAdapter.git'
+
+    libraryVersion = "0.1-SNAPSHOT"
+    versionCode = 1
+    sdkVersion = 24
+    supportVersion = "24.1.1"
+
+    developerId = 'f43nd1r'
+    developerName = 'Lukas Morawietz'
+    developerEmail = 'support@faendir.com'
+
+    licenseName = 'The Apache Software License, Version 2.0'
+    licenseUrl = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+    allLicenses = ["Apache-2.0"]
+}
+
+android {
+    compileSdkVersion 24
+    buildToolsVersion "24.0.0"
+
+    defaultConfig {
+        minSdkVersion 11
+        targetSdkVersion sdkVersion
+        versionCode versionCode
+        versionName libraryVersion
+
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    compile "com.android.support:appcompat-v7:$supportVersion"
+    compile "com.android.support:recyclerview-v7:$supportVersion"
+    compile 'org.apache.commons:commons-collections4:4.1'
+    compile 'org.apache.commons:commons-lang3:3.4'
+}
+
+apply from: 'install.gradle'
+apply from: 'upload.gradle'
+/* how to upload: [terminal]
+* gradlew bintrayUpload
+*/
