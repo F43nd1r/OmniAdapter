@@ -15,34 +15,47 @@ public interface Component {
     State getState();
 
     class State {
-        private boolean isExpanded;
-        private boolean isSelected;
+        private boolean expanded;
+        private boolean selected;
+        private boolean enabled;
         private transient Listener listener;
 
+        public State() {
+            expanded = false;
+            selected = false;
+            enabled = true;
+        }
+
         public boolean isExpanded() {
-            return isExpanded;
+            return expanded;
         }
 
         public void setExpanded(boolean expanded) {
-            if(isExpanded != expanded && listener != null){
+            boolean old = this.expanded;
+            this.expanded = expanded;
+            if(old != expanded && listener != null){
                 listener.onExpansionToggled(expanded);
             }
-            isExpanded = expanded;
         }
 
         public boolean isSelected() {
-            return isSelected;
+            return selected;
         }
 
         public void setSelected(boolean selected) {
-            if (isSelected != selected && listener != null) {
+            boolean old = this.selected;
+            this.selected = selected;
+            if (old != selected && listener != null) {
                 listener.onSelectionToggled(selected);
             }
-            isSelected = selected;
         }
 
         void setListener(Listener listener) {
             this.listener = listener;
+        }
+
+        public Listener getListener() {
+            return listener;
         }
 
         void removeListener(Listener listener) {
@@ -51,9 +64,22 @@ public interface Component {
             }
         }
 
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            boolean old = this.enabled;
+            this.enabled = enabled;
+            if (old != enabled && listener != null) {
+                listener.onEnabledToggled(enabled);
+            }
+        }
+
         interface Listener {
             void onSelectionToggled(boolean newValue);
             void onExpansionToggled(boolean newValue);
+            void onEnabledToggled(boolean newValue);
         }
 
     }

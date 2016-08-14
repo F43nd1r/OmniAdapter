@@ -16,35 +16,47 @@ import java.util.List;
  */
 
 public class DeepObservableList<T extends Component> extends ArrayList<T> {
-    private static DeepObservableList empty = null;
 
     static <E extends Component> DeepObservableList<E> emptyList() {
-        if (empty == null) {
-            empty = new DeepObservableList();
-        }
-        //noinspection unchecked
-        return empty;
+        return new DeepObservableList<>();
     }
 
-    private transient final EventListenerSupport<Listener> listeners = EventListenerSupport.create(Listener.class);
+    private transient final EventListenerSupport<Listener<T>> listeners = Utils.createGenericEventListenerSupport(Listener.class);
+    private transient final ChildListener childListener = new ChildListener();
+    private transient final List<ChangeInformation<T>> changeInfos = new ArrayList<>();
     private transient final Handler handler = new Handler(Looper.getMainLooper());
-    private transient boolean posted = false;
+    private transient volatile boolean posted = false;
+    private transient volatile boolean suppress = false;
     private transient VisibleFilter filter = new NoFilter();
 
-    public void addListener(Listener listener) {
+    public DeepObservableList(int initialCapacity) {
+        super(initialCapacity);
+    }
+
+    public DeepObservableList() {
+    }
+
+    public DeepObservableList(Collection<? extends T> c) {
+        super(c);
+        afterAdd(c);
+    }
+
+    public void addListener(Listener<T> listener) {
         listeners.addListener(listener);
         for (Component component : this) {
             if (component instanceof Composite) {
-                ((Composite) component).addListener(listener);
+                //noinspection unchecked
+                ((Composite<T>) component).addListener(listener);
             }
         }
     }
 
-    public void removeListener(Listener listener) {
+    public void removeListener(Listener<T> listener) {
         listeners.removeListener(listener);
         for (Component component : this) {
             if (component instanceof Composite) {
-                ((Composite) component).removeListener(listener);
+                //noinspection unchecked
+                ((Composite<T>) component).removeListener(listener);
             }
         }
     }
@@ -81,101 +93,182 @@ public class DeepObservableList<T extends Component> extends ArrayList<T> {
         return list;
     }
 
-    private void notifyListeners() {
-        if (!posted) {
-            handler.post(new Runnable() {
-                @Override
-                public void run() {
-                    posted = false;
-                    listeners.fire().onListChanged();
-                }
-            });
-            posted = true;
+    public void beginBatchedUpdates() {
+        suppress = true;
+        for (T component : this) {
+            if (component instanceof DeepObservableList) {
+                //noinspection unchecked
+                ((DeepObservableList<T>) component).beginBatchedUpdates();
+            }
+        }
+
+    }
+
+    public void endBatchedUpdates() {
+        for (T component : this) {
+            if (component instanceof DeepObservableList) {
+                //noinspection unchecked
+                ((DeepObservableList<T>) component).endBatchedUpdates();
+            }
+        }
+        suppress = false;
+        listChanged(true);
+    }
+
+
+    private void listChanged(boolean direct) {
+        if (!suppress && !posted) {
+            if (direct) {
+                notifyListeners();
+            } else {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        notifyListeners();
+                        posted = false;
+                    }
+                });
+                posted = true;
+            }
         }
     }
 
-    @Override
-    public void trimToSize() {
-        super.trimToSize();
-        notifyListeners();
+    private void notifyListeners() {
+        ArrayList<ChangeInformation<T>> changes = new ArrayList<>(Utils.compileChanges(changeInfos));
+        changeInfos.clear();
+        if (!changes.isEmpty()) {
+            listeners.fire().onListChanged(changes);
+        }
+    }
+
+    private void beforeRemove(Collection<? extends T> components) {
+        for (T c : components) {
+            beforeRemove(c);
+        }
+    }
+
+    private void beforeRemove(T component) {
+        if (contains(component)) {
+            if (component instanceof DeepObservableList) {
+                //noinspection unchecked
+                ((DeepObservableList<T>) component).removeListener(childListener);
+            }
+            changeInfos.add(ChangeInformation.removeInfo(component, this, indexOf(component)));
+        }
+    }
+
+    private void afterAdd(Collection<? extends T> components) {
+        for (T c : components) {
+            afterAdd(c);
+        }
+    }
+
+    private void afterAdd(T component) {
+        if (component instanceof DeepObservableList) {
+            //noinspection unchecked
+            ((DeepObservableList<T>) component).addListener(childListener);
+        }
+        changeInfos.add(ChangeInformation.addInfo(component, this));
     }
 
     @Override
     public T set(int index, T element) {
+        beforeRemove(super.get(index));
         T component = super.set(index, element);
-        notifyListeners();
+        afterAdd(component);
+        listChanged(suppress);
         return component;
     }
 
     @Override
     public boolean add(T component) {
         boolean result = super.add(component);
-        notifyListeners();
+        afterAdd(component);
+        listChanged(suppress);
         return result;
     }
 
     @Override
     public void add(int index, T element) {
         super.add(index, element);
-        notifyListeners();
+        afterAdd(element);
+        listChanged(suppress);
     }
 
     @Override
     public T remove(int index) {
+        beforeRemove(super.get(index));
         T component = super.remove(index);
-        notifyListeners();
+        listChanged(suppress);
         return component;
     }
 
     @Override
     public boolean remove(Object o) {
+        throw new UnsupportedOperationException();
+    }
+
+    public boolean remove(T o) {
+        beforeRemove(o);
         boolean result = super.remove(o);
-        notifyListeners();
+        listChanged(suppress);
         return result;
     }
 
     @Override
     public boolean addAll(Collection<? extends T> c) {
         boolean result = super.addAll(c);
-        notifyListeners();
+        afterAdd(c);
+        listChanged(suppress);
         return result;
     }
 
     @Override
     public boolean addAll(int index, Collection<? extends T> c) {
         boolean result = super.addAll(index, c);
-        notifyListeners();
+        afterAdd(c);
+        listChanged(suppress);
         return result;
     }
 
     @Override
     protected void removeRange(int fromIndex, int toIndex) {
+        for (int i = fromIndex; i < toIndex; i++) {
+            beforeRemove(super.get(i));
+        }
         super.removeRange(fromIndex, toIndex);
-        notifyListeners();
+        listChanged(suppress);
     }
 
     @Override
     public boolean removeAll(Collection<?> c) {
+        //noinspection unchecked
+        beforeRemove((Collection<? extends T>) c);
         boolean result = super.removeAll(c);
-        notifyListeners();
+        listChanged(suppress);
         return result;
     }
 
     @Override
     public boolean retainAll(Collection<?> c) {
+        List<T> old = new ArrayList<>(this);
+        //noinspection SuspiciousMethodCalls
+        old.removeAll(c);
+        beforeRemove(old);
         boolean result = super.retainAll(c);
-        notifyListeners();
+        listChanged(suppress);
         return result;
     }
 
     @Override
     public void clear() {
+        beforeRemove(this);
         super.clear();
-        notifyListeners();
+        listChanged(suppress);
     }
 
-    public interface Listener {
-        void onListChanged();
+    public interface Listener<T extends Component> {
+        void onListChanged(List<ChangeInformation<T>> changeInfo);
     }
 
     public interface VisibleFilter {
@@ -186,6 +279,14 @@ public class DeepObservableList<T extends Component> extends ArrayList<T> {
         void visit(T component, int level);
     }
 
+    private class ChildListener implements Listener<T> {
+        @Override
+        public void onListChanged(List<ChangeInformation<T>> changeInfo) {
+            changeInfos.addAll(changeInfo);
+            listChanged(suppress);
+        }
+    }
+
     private static class NoFilter implements VisibleFilter {
 
         @Override
@@ -193,4 +294,5 @@ public class DeepObservableList<T extends Component> extends ArrayList<T> {
             return true;
         }
     }
+
 }

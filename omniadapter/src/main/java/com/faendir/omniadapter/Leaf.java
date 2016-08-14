@@ -1,5 +1,7 @@
 package com.faendir.omniadapter;
 
+import android.support.annotation.NonNull;
+
 import java.util.UUID;
 
 /**
@@ -38,6 +40,7 @@ public abstract class Leaf implements Component {
         return hashCode();
     }
 
+    @NonNull
     @Override
     public State getState() {
         return state;

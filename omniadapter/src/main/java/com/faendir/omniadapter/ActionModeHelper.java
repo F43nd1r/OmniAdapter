@@ -13,7 +13,7 @@ import java.util.List;
  * @author F43nd1r
  */
 
-public class ActionModeHelper<T extends Component> implements SelectionListener<T> {
+public class ActionModeHelper<T extends Component> implements OmniAdapter.SelectionListener<T> {
 
     private final AppCompatActivity activity;
     private final ActionMode.Callback callback;

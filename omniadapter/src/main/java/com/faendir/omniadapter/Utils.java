@@ -11,8 +11,14 @@ import android.os.Build;
 import android.support.annotation.ColorInt;
 import android.view.View;
 
+import org.apache.commons.lang3.event.EventListenerSupport;
+
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created on 09.08.2016.
@@ -40,10 +46,11 @@ final class Utils {
             background = drawable;
         }
         drawable.addState(new int[0], view.getBackground());
+        //noinspection deprecation
         view.setBackgroundDrawable(background);
     }
 
-    static int findLevel(List<? extends Component> search, Component component) {
+    static int findLevel(DeepObservableList<? extends Component> search, Component component) {
         for (Component c : search) {
             if (c.equals(component)) {
                 return 0;
@@ -55,21 +62,21 @@ final class Utils {
         return -1;
     }
 
-    static <T extends Component> DeepObservableList<T> findList(List<? extends T> search, T component) {
+    static <T extends Component> DeepObservableList<T> findParent(DeepObservableList<? extends T> search, T component) {
         for (Component c : search) {
             if (c.equals(component)) {
                 //noinspection unchecked
                 return (DeepObservableList<T>) search;
             } else if (c instanceof DeepObservableList) {
                 //noinspection unchecked
-                DeepObservableList<T> list = findList((DeepObservableList<T>) c, component);
+                DeepObservableList<T> list = findParent((DeepObservableList<T>) c, component);
                 if (!list.isEmpty()) return list;
             }
         }
         return DeepObservableList.emptyList();
     }
 
-    static <T extends Component> void expandUntilLevel(DeepObservableList<T> list, final OmniController<T> controller, final int expandUntilLevel) {
+    static <T extends Component> void expandUntilLevel(DeepObservableList<T> list, final OmniAdapter.Controller<T> controller, final int expandUntilLevel) {
         list.visitDeep(new DeepObservableList.ComponentVisitor<T>() {
             @Override
             public void visit(T component, int level) {
@@ -88,5 +95,42 @@ final class Utils {
                 component.getState().setSelected(false);
             }
         });
+    }
+
+
+    static <T> EventListenerSupport<T> createGenericEventListenerSupport(Class<? super T> listener) {
+        //noinspection unchecked
+        return (EventListenerSupport<T>) new EventListenerSupport<>(listener);
+    }
+
+    static <T extends Component> Collection<ChangeInformation<T>> compileChanges(List<ChangeInformation<T>> changes) {
+        Collections.sort(changes);
+        Map<T, ChangeInformation<T>> map = new HashMap<>();
+        for (ChangeInformation<T> change : changes) {
+            T component = change.getComponent();
+            if (map.containsKey(component)) {
+                ChangeInformation<T> prevChange = map.get(component);
+                switch (change.getType()) {
+                    case REMOVE:
+                        if (prevChange.getType() == ChangeInformation.Type.ADD) {
+                            map.remove(component);
+                        } else {
+                            map.put(component, ChangeInformation.removeInfo(component, prevChange.getFormerParent(), prevChange.getFormerPosition()));
+                        }
+                        break;
+                    case ADD:
+                    case MOVE:
+                        if (prevChange.getType() == ChangeInformation.Type.ADD) {
+                            map.put(component, ChangeInformation.addInfo(component, change.getNewParent()));
+                        }else {
+                            map.put(component, ChangeInformation.moveInfo(component, prevChange.getFormerParent(), prevChange.getFormerPosition(), change.getNewParent()));
+                        }
+                        break;
+                }
+            } else {
+                map.put(component, change);
+            }
+        }
+        return map.values();
     }
 }

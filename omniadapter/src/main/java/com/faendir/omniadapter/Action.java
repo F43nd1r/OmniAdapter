@@ -19,12 +19,13 @@ import java.util.Map;
  */
 
 public class Action {
-    static final int NONE = -1;
+    static final int NONE = 1 << 10;
     public static final int SELECT = 1;
-    public static final int EXPAND = 2;
-    public static final int DRAG = 3;
-    public static final int REMOVE = 4;
-    public static final int CUSTOM = 10;
+    public static final int EXPAND = 1 << 1;
+    public static final int DRAG = 1 << 2;
+    public static final int REMOVE = 1 << 3;
+    public static final int MOVE = 1 << 4;
+    public static final int CUSTOM = 1 << 9;
 
     @Retention(RetentionPolicy.SOURCE)
     @IntDef({NONE, SELECT, REMOVE, CUSTOM})
@@ -46,13 +47,18 @@ public class Action {
     public @interface LongClickCompositeAction {
     }
 
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef({REMOVE, MOVE})
+    public @interface UndoableAction {
+    }
+
     static class BaseAction {
         @NonNull
         private final Listener listener;
         private final int defaultAction;
         private int defaultCompositeAction;
-        private Map<Range<Integer>, Integer> actions;
-        private Map<Range<Integer>, Integer> compositeActions;
+        private final Map<Range<Integer>, Integer> actions;
+        private final Map<Range<Integer>, Integer> compositeActions;
 
         public BaseAction(int defaultAction, @NonNull Listener listener) {
             this.listener = listener;
@@ -116,7 +122,6 @@ public class Action {
         }
 
     }
-
 
     public static class Click extends BaseAction {
 

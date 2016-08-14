@@ -1,5 +1,7 @@
 package com.faendir.omniadapter;
 
+import android.support.annotation.NonNull;
+
 import java.util.UUID;
 
 /**
@@ -38,6 +40,7 @@ public class Composite<T extends Component> extends DeepObservableList<T> implem
         return hashCode();
     }
 
+    @NonNull
     @Override
     public State getState() {
         return state;

@@ -6,8 +6,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.faendir.omniadapter.BaseOmniController;
 import com.faendir.omniadapter.Component;
+import com.faendir.omniadapter.OmniAdapter;
 
 /**
  * Created on 08.08.2016.
@@ -15,7 +15,7 @@ import com.faendir.omniadapter.Component;
  * @author F43nd1r
  */
 
-public class SimpleOmniController extends BaseOmniController<Component> {
+public class SimpleOmniController extends OmniAdapter.BaseController<Component> {
 
     private final int[] layoutRes;
 

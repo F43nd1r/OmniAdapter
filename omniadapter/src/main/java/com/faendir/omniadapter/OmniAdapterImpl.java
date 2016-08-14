@@ -5,11 +5,17 @@ import android.os.Handler;
 import android.support.annotation.ColorInt;
 import android.support.annotation.IntRange;
 import android.support.annotation.NonNull;
+import android.support.design.widget.Snackbar;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
+import android.util.SparseArray;
+import android.view.View;
 import android.view.ViewGroup;
 
+import org.apache.commons.lang3.event.EventListenerSupport;
+
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
@@ -19,9 +25,9 @@ import java.util.List;
  * @author F43nd1r
  */
 
-class OmniAdapterImpl<T extends Component> extends OmniAdapter<T> implements ComponentViewHolder.Listener<T>, DeepObservableList.Listener {
+class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<ComponentViewHolder<T>> implements OmniAdapter<T>, ComponentViewHolder.Listener<T>, DeepObservableList.Listener<T> {
     private final DeepObservableList<T> basis;
-    private final OmniController<T> controller;
+    private final Controller<T> controller;
     private final ItemTouchHelper touchHelper;
     private final Action.Click click;
     private final Action.LongClick longClick;
@@ -35,16 +41,22 @@ class OmniAdapterImpl<T extends Component> extends OmniAdapter<T> implements Com
     private final Handler mainHandler;
     private final SelectionMode selectionMode;
     private final boolean deselectChildrenOnCollapse;
-    private final List<SelectionListener<T>> selectionListeners;
+    private final SparseArray<String> undoActions;
+    private final String undo;
+    private final EventListenerSupport<SelectionListener<T>> selectionListener;
     private List<T> visible;
     private boolean bufferedUpdate;
+    private boolean restoring;
+    private boolean dragging;
+    private List<ChangeInformation<T>> dragChanges;
+    private RecyclerView recyclerView;
 
-    OmniAdapterImpl(Context context, @NonNull DeepObservableList<? extends T> basis, OmniController<T> controller,
+    OmniAdapterImpl(Context context, DeepObservableList<? extends T> basis, Controller<T> controller,
                     Action.Click click, Action.LongClick longClick, Action.Swipe swipeToLeft, Action.Swipe swipeToRight,
                     RecyclerView.LayoutManager layoutManager,
                     int highlightColor, int selectionColor, SelectionMode selectionMode,
                     int expandUntilLevelOnStartup, boolean deselectChildrenOnCollapse,
-                    List<SelectionListener<T>> selectionListeners) {
+                    List<SelectionListener<T>> selectionListeners, SparseArray<String> undoActions, String undo) {
         this.click = click;
         this.longClick = longClick;
         this.swipeToLeft = swipeToLeft;
@@ -54,17 +66,23 @@ class OmniAdapterImpl<T extends Component> extends OmniAdapter<T> implements Com
         this.selectionColor = selectionColor;
         this.selectionMode = selectionMode;
         this.deselectChildrenOnCollapse = deselectChildrenOnCollapse;
-        this.selectionListeners = selectionListeners;
+        this.undoActions = undoActions;
+        this.undo = undo;
+        selectionListener = Utils.createGenericEventListenerSupport(SelectionListener.class);
+        for (SelectionListener<T> listener : selectionListeners) {
+            selectionListener.addListener(listener);
+        }
         setHasStableIds(true);
         bufferedUpdate = false;
         //noinspection unchecked
         this.basis = (DeepObservableList<T>) basis;
         this.controller = controller;
+        dragChanges = new ArrayList<>();
         mainHandler = new Handler(context.getMainLooper());
         visible = this.basis.flatView();
         touchHelper = new ItemTouchHelper(new TouchCallback());
         Utils.expandUntilLevel(this.basis, controller, expandUntilLevelOnStartup);
-        basis.addListener(this);
+        this.basis.addListener(this);
     }
 
     @Override
@@ -120,18 +138,15 @@ class OmniAdapterImpl<T extends Component> extends OmniAdapter<T> implements Com
     public void onSelectionToggled(ComponentViewHolder<T> viewHolder) {
         List<T> selection = getSelection();
         if (selection.size() > 0) {
-            for (SelectionListener<T> selectionListener : selectionListeners) {
-                selectionListener.onSelectionChanged((List<T>) selection);
-            }
+            selectionListener.fire().onSelectionChanged(selection);
         } else {
-            for (SelectionListener<T> selectionListener : selectionListeners) {
-                selectionListener.onSelectionCleared();
-            }
+            selectionListener.fire().onSelectionCleared();
         }
     }
 
     @Override
     public void onAttachedToRecyclerView(RecyclerView recyclerView) {
+        this.recyclerView = recyclerView;
         super.onAttachedToRecyclerView(recyclerView);
         recyclerView.setLayoutManager(layoutManager);
         touchHelper.attachToRecyclerView(recyclerView);
@@ -140,8 +155,10 @@ class OmniAdapterImpl<T extends Component> extends OmniAdapter<T> implements Com
     @Override
     public void clearSelection() {
         Utils.clearSelection(basis);
+        selectionListener.fire().onSelectionCleared();
     }
 
+    @NonNull
     @Override
     public List<T> getSelection() {
         final List<T> list = new ArrayList<>();
@@ -156,6 +173,7 @@ class OmniAdapterImpl<T extends Component> extends OmniAdapter<T> implements Com
         return list;
     }
 
+    @NonNull
     @Override
     public List<T> getSelectionByLevel(@IntRange(from = 0) final int l) {
         final List<T> list = new ArrayList<>();
@@ -170,10 +188,18 @@ class OmniAdapterImpl<T extends Component> extends OmniAdapter<T> implements Com
         return list;
     }
 
+    @Override
+    public void notifyItemUpdated(T component) {
+        int index = visible.indexOf(component);
+        if (index != -1) {
+            notifyItemChanged(index);
+        }
+    }
+
     private boolean executeAction(final Action.BaseAction action, final ComponentViewHolder<T> viewHolder) {
         final T component = viewHolder.getComponent();
         final int actionId = action.resolve(component, viewHolder.getLevel());
-        if (actionId == Action.NONE) {
+        if (actionId == Action.NONE || !component.getState().isEnabled()) {
             return false;
         }
         new Thread(new Runnable() {
@@ -194,8 +220,7 @@ class OmniAdapterImpl<T extends Component> extends OmniAdapter<T> implements Com
                                 actionSuccess = toggleExpansion(viewHolder.getComponent());
                                 break;
                             case Action.REMOVE:
-                                Utils.findList(basis, component).remove(component);
-                                update();
+                                Utils.findParent(basis, component).remove(component);
                                 break;
                             case Action.DRAG:
                                 actionSuccess = false;
@@ -221,7 +246,7 @@ class OmniAdapterImpl<T extends Component> extends OmniAdapter<T> implements Com
                     final List<T> old = visible;
                     List<T> current = basis.flatView();
                     Iterator<T> iterator = current.iterator();
-                    List<T> possiblyRemoved = new ArrayList<>();
+                    List<T> possibleRemoved = new ArrayList<>();
                     List<T> possibleAdded = new ArrayList<>();
                     List<T> possibleMoved = new ArrayList<>();
                     for (T oldComponent : old) {
@@ -230,10 +255,10 @@ class OmniAdapterImpl<T extends Component> extends OmniAdapter<T> implements Com
                             if (possibleAdded.remove(oldComponent)) {
                                 possibleMoved.add(oldComponent);
                             } else {
-                                possiblyRemoved.add(oldComponent);
+                                possibleRemoved.add(oldComponent);
                             }
                             if (currentComponent != null) {
-                                if (possiblyRemoved.remove(currentComponent)) {
+                                if (possibleRemoved.remove(currentComponent)) {
                                     possibleMoved.add(currentComponent);
                                 } else {
                                     possibleAdded.add(currentComponent);
@@ -245,7 +270,7 @@ class OmniAdapterImpl<T extends Component> extends OmniAdapter<T> implements Com
                         possibleAdded.add(iterator.next());
                     }
                     visible = current;
-                    for (T component : possiblyRemoved) {
+                    for (T component : possibleRemoved) {
                         int index = old.indexOf(component);
                         notifyItemRemoved(index);
                         old.remove(index);
@@ -287,18 +312,122 @@ class OmniAdapterImpl<T extends Component> extends OmniAdapter<T> implements Com
                 //noinspection unchecked
                 Utils.clearSelection((DeepObservableList<Component>) component);
             }
-            update();
             return true;
         }
         return false;
     }
 
     @Override
-    public void onListChanged() {
+    public void onListChanged(List<ChangeInformation<T>> changeInfo) {
+        if (!dragging) {
+            if (!restoring) {
+                List<ChangeInformation<T>> additions = new ArrayList<>();
+                final List<ChangeInformation<T>> removals = new ArrayList<>();
+                final List<ChangeInformation<T>> moves = new ArrayList<>();
+                for (ChangeInformation<T> change : changeInfo) {
+                    switch (change.getType()) {
+                        case ADD:
+                            additions.add(change);
+                            break;
+                        case REMOVE:
+                            removals.add(change);
+                            break;
+                        case MOVE:
+                            moves.add(change);
+                            break;
+                    }
+                }
+                final boolean remove = undoActions.get(Action.REMOVE) != null && !removals.isEmpty() && additions.isEmpty() && moves.isEmpty();
+                final boolean move = undoActions.get(Action.MOVE) != null && removals.isEmpty() && additions.isEmpty() && !moves.isEmpty();
+                if (remove || move) {
+                    Snackbar.make(recyclerView, undoActions.get(remove ? Action.REMOVE : Action.MOVE), Snackbar.LENGTH_INDEFINITE)
+                            .setAction(undo, new View.OnClickListener() {
+                                @Override
+                                public void onClick(View view) {
+                                    restoring = true;
+                                    basis.beginBatchedUpdates();
+                                    for (ChangeInformation<T> change : remove ? removals : moves) {
+                                        if (move) {
+                                            change.getNewParent().remove(change.getComponent());
+                                        }
+                                        change.getFormerParent().add(change.getFormerPosition(), change.getComponent());
+                                    }
+                                    basis.endBatchedUpdates();
+                                    restoring = false;
+                                }
+                            })
+                            .show();
+                }
+            }
+        } else {
+            dragChanges.addAll(changeInfo);
+        }
         update();
     }
 
+    @SafeVarargs
+    public final void notifyItemsUpdated(T... components) {
+        for (T component : components) {
+            notifyItemUpdated(component);
+        }
+    }
+
+    @Override
+    public void notifyItemsUpdated(Collection<? extends T> components) {
+        for (T component : components) {
+            notifyItemUpdated(component);
+        }
+    }
+
+    @Override
+    public void notifyDataSetUpdated() {
+        notifyDataSetChanged();
+    }
+
+    @NonNull
+    @Override
+    public List<? extends T> getVisible() {
+        return new ArrayList<>(visible);
+    }
+
+    @NonNull
+    @Override
+    public List<? extends T> getVisibleByLevel(@IntRange(from = 0) int level) {
+        List<T> list = new ArrayList<>();
+        for (T component : visible) {
+            if (Utils.findLevel(basis, component) == level) {
+                list.add(component);
+            }
+        }
+        return list;
+    }
+
+    @NonNull
+    @Override
+    public List<? extends T> getVisibleByParent(T parent) {
+        List<T> list = new ArrayList<>();
+        if (parent instanceof Composite)
+            //noinspection unchecked
+            for (T component : (Composite<T>) parent) {
+                if (visible.contains(component)) {
+                    list.add(component);
+                }
+            }
+        return list;
+    }
+
+    @Override
+    public int getVisibleCount() {
+        return visible.size();
+    }
+
+    @Override
+    public boolean isVisible(T component) {
+        return visible.contains(component);
+    }
+
     private class TouchCallback extends ItemTouchHelper.SimpleCallback {
+
         TouchCallback() {
             super(0, 0);
         }
@@ -306,18 +435,22 @@ class OmniAdapterImpl<T extends Component> extends OmniAdapter<T> implements Com
         @Override
         public int getDragDirs(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
             ComponentViewHolder holder = (ComponentViewHolder) viewHolder;
-            return longClick.resolve(holder.getComponent(), holder.getLevel()) == Action.DRAG ? ItemTouchHelper.UP | ItemTouchHelper.DOWN : 0;
+            return holder.getComponent().getState().isEnabled()
+                    && longClick.resolve(holder.getComponent(), holder.getLevel()) == Action.DRAG
+                    ? ItemTouchHelper.UP | ItemTouchHelper.DOWN : 0;
         }
 
         @Override
         public int getSwipeDirs(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
             ComponentViewHolder holder = (ComponentViewHolder) viewHolder;
-            return (swipeToLeft.resolve(holder.getComponent(), holder.getLevel()) != Action.NONE ? ItemTouchHelper.LEFT : 0)
-                    | (swipeToRight.resolve(holder.getComponent(), holder.getLevel()) != Action.NONE ? ItemTouchHelper.RIGHT : 0);
+            return holder.getComponent().getState().isEnabled()
+                    ? (swipeToLeft.resolve(holder.getComponent(), holder.getLevel()) != Action.NONE ? ItemTouchHelper.LEFT : 0)
+                    | (swipeToRight.resolve(holder.getComponent(), holder.getLevel()) != Action.NONE ? ItemTouchHelper.RIGHT : 0) : 0;
         }
 
         @Override
         public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, RecyclerView.ViewHolder target) {
+            dragging = true;
             //noinspection unchecked
             ComponentViewHolder<T> fromHolder = (ComponentViewHolder<T>) viewHolder;
             //noinspection unchecked
@@ -326,28 +459,54 @@ class OmniAdapterImpl<T extends Component> extends OmniAdapter<T> implements Com
             T to = toHolder.getComponent();
             DeepObservableList<T> toList;
             if (fromHolder.getLevel() == toHolder.getLevel()) {
-                toList = Utils.findList(basis, to);
+                toList = Utils.findParent(basis, to);
             } else if (fromHolder.getLevel() == toHolder.getLevel() + 1 && to instanceof Composite) {
                 //noinspection unchecked
                 toList = (DeepObservableList) to;
+                if (!to.getState().isExpanded()) toggleExpansion(to);
             } else {
                 return false;
             }
-            DeepObservableList fromList = Utils.findList(basis, from);
+            DeepObservableList<T> fromList = Utils.findParent(basis, from);
             assert toList != null && fromList != null;
             if (!controller.shouldMove(from, fromList, fromList.indexOf(from), toList, toList.indexOf(to))) {
                 return false;
             }
             fromList.remove(from);
             toList.add(toList.equals(to) ? toList.size() : toList.indexOf(to), from);
-            update();
             return true;
+        }
+
+        @Override
+        public void clearView(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
+            super.clearView(recyclerView, viewHolder);
+            dragging = false;
+            onListChanged(new ArrayList<>(Utils.compileChanges(dragChanges)));
+            dragChanges.clear();
+        }
+
+        @Override
+        public RecyclerView.ViewHolder chooseDropTarget(RecyclerView.ViewHolder sel, List<RecyclerView.ViewHolder> dropTargets, int curX, int curY) {
+            //noinspection unchecked
+            ComponentViewHolder<T> selected = (ComponentViewHolder<T>) sel;
+            for (Iterator<RecyclerView.ViewHolder> iterator = dropTargets.iterator(); iterator.hasNext(); ) {
+                //noinspection unchecked
+                ComponentViewHolder<T> holder = (ComponentViewHolder<T>) iterator.next();
+                if (holder.getLevel() > selected.getLevel() || holder.getLevel() + 1 < selected.getLevel()) {
+                    iterator.remove();
+                }
+            }
+            return super.chooseDropTarget(selected, dropTargets, curX, curY);
         }
 
         @Override
         public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
             //noinspection unchecked
-            executeAction(direction == ItemTouchHelper.LEFT ? swipeToLeft : swipeToRight, (ComponentViewHolder<T>) viewHolder);
+            ComponentViewHolder<T> holder = (ComponentViewHolder<T>) viewHolder;
+            if (controller.shouldSwipe(holder.getComponent(), direction)) {
+                //noinspection unchecked
+                executeAction(direction == ItemTouchHelper.LEFT ? swipeToLeft : swipeToRight, holder);
+            }
         }
     }
 

@@ -24,14 +24,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Composite composite = new Composite("base");
         composite.add(new Leaf("leaf"));
         observableList.add(composite);
-        OmniAdapter<Component> adapter = new OmniBuilder<>(this, observableList, new SimpleOmniController(android.R.layout.simple_list_item_1))
+        OmniAdapter<Component> adapter = new OmniBuilder<>(this, observableList,new SimpleOmniController(android.R.layout.simple_list_item_1))
                 .setClick(new Action.Click(Action.SELECT)
                         .setDefaultCompositeAction(Action.EXPAND))
-                .setLongClick(new Action.LongClick(Action.CUSTOM))
+                .setLongClick(new Action.LongClick(Action.DRAG))
                 .setSwipeToRight(new Action.Swipe(Action.REMOVE))
+                .enableUndoForAction(Action.MOVE, "Item moved")
+                .enableUndoForAction(Action.REMOVE, "Item removed")
                 .setExpandUntilLevelOnStartup(1)
-                .build();
-        recyclerView.setAdapter(adapter);
+                .attach(recyclerView);
     }
 
     @Override

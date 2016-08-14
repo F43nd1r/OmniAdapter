@@ -6,10 +6,10 @@ import android.graphics.Color;
 import android.support.annotation.ColorInt;
 import android.support.annotation.IntRange;
 import android.support.annotation.NonNull;
+import android.support.annotation.StringRes;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-
-import org.apache.commons.lang3.builder.Builder;
+import android.util.SparseArray;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,13 +21,13 @@ import java.util.List;
  */
 
 @SuppressWarnings("unused")
-public class OmniBuilder<T extends Component> implements Builder<OmniAdapter> {
+public class OmniBuilder<T extends Component> {
     @NonNull
     private final Context context;
     @NonNull
     private final DeepObservableList<? extends T> dataSource;
     @NonNull
-    private final OmniController<T> controller;
+    private final OmniAdapter.Controller<T> controller;
     @NonNull
     private Action.Click click;
     @NonNull
@@ -46,9 +46,14 @@ public class OmniBuilder<T extends Component> implements Builder<OmniAdapter> {
     private SelectionMode selectionMode;
     private int expandUntilLevelOnStartup;
     private boolean deselectChildrenOnCollapse;
-    private List<SelectionListener<T>> selectionListeners;
+    @NonNull
+    private List<OmniAdapter.SelectionListener<T>> selectionListeners;
+    @NonNull
+    private SparseArray<String> enabledUndoActions;
+    @NonNull
+    private String undoText;
 
-    public OmniBuilder(@NonNull Context context, @NonNull DeepObservableList<? extends T> dataSource, @NonNull OmniController<T> controller) {
+    public OmniBuilder(@NonNull Context context, @NonNull DeepObservableList<? extends T> dataSource, @NonNull OmniAdapter.Controller<T> controller) {
         this.context = context;
         this.dataSource = dataSource;
         this.controller = controller;
@@ -65,6 +70,8 @@ public class OmniBuilder<T extends Component> implements Builder<OmniAdapter> {
         expandUntilLevelOnStartup = -1;
         deselectChildrenOnCollapse = true;
         selectionListeners = new ArrayList<>();
+        enabledUndoActions = new SparseArray<>();
+        undoText = "Undo";
     }
 
     public OmniBuilder<T> setClick(@NonNull Action.Click click) {
@@ -117,16 +124,35 @@ public class OmniBuilder<T extends Component> implements Builder<OmniAdapter> {
         return this;
     }
 
-    public OmniBuilder<T> addSelectionListener(SelectionListener<T> listener){
+    public OmniBuilder<T> addSelectionListener(OmniAdapter.SelectionListener<T> listener) {
         this.selectionListeners.add(listener);
         return this;
     }
 
-    @Override
-    public OmniAdapter<T> build() {
-        return new OmniAdapterImpl<>(context, dataSource, controller,
+    public OmniBuilder<T> enableUndoForAction(@Action.UndoableAction int action, @StringRes int textId) {
+        return enableUndoForAction(action, context.getString(textId));
+    }
+
+    public OmniBuilder<T> enableUndoForAction(@Action.UndoableAction int action, String text) {
+        enabledUndoActions.put(action, text);
+        return this;
+    }
+
+    public OmniBuilder<T> setUndoButtonText(@StringRes int undoTextId) {
+        return setUndoButtonText(context.getString(undoTextId));
+    }
+
+    public OmniBuilder<T> setUndoButtonText(@NonNull String undoText) {
+        this.undoText = undoText;
+        return this;
+    }
+
+    public OmniAdapter<T> attach(RecyclerView recyclerView) {
+        OmniAdapterImpl<T> adapter = new OmniAdapterImpl<>(context, dataSource, controller,
                 click, longClick, swipeToLeft, swipeToRight, layoutManager,
                 highlightColor, selectionColor, selectionMode, expandUntilLevelOnStartup,
-                deselectChildrenOnCollapse, selectionListeners);
+                deselectChildrenOnCollapse, selectionListeners, enabledUndoActions, undoText);
+        recyclerView.setAdapter(adapter);
+        return adapter;
     }
 }

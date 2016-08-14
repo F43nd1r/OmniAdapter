@@ -28,22 +28,24 @@ class ComponentViewHolder<T extends Component> extends RecyclerView.ViewHolder i
         Utils.setDrawable(view, highlightColor, selectionColor);
     }
 
-    public T getComponent() {
+    T getComponent() {
         return component;
     }
 
-    public void setComponent(@NonNull T component) {
+    void setComponent(@NonNull T component) {
         this.component = component;
         component.getState().setListener(this);
+        view.setEnabled(component.getState().isEnabled());
+        view.setActivated(component.getState().isSelected());
     }
 
-    public void detach(){
+    void detach(){
         if(this.component != null){
             this.component.getState().removeListener(this);
         }
     }
 
-    public void setListener(@Nullable Listener<T> listener) {
+    void setListener(@Nullable Listener<T> listener) {
         this.listener = listener;
     }
 
@@ -72,6 +74,11 @@ class ComponentViewHolder<T extends Component> extends RecyclerView.ViewHolder i
         }
     }
 
+    @Override
+    public void onEnabledToggled(boolean newValue) {
+        getView().setEnabled(newValue);
+    }
+
     interface Listener<T extends Component> {
         void onClick(ComponentViewHolder<T> viewHolder);
 
@@ -82,15 +89,11 @@ class ComponentViewHolder<T extends Component> extends RecyclerView.ViewHolder i
         void onSelectionToggled(ComponentViewHolder<T> viewHolder);
     }
 
-    public View getView() {
+    View getView() {
         return view;
     }
 
-    public int getLevel() {
+    int getLevel() {
         return level;
-    }
-
-    public void setLevel(int level) {
-        this.level = level;
     }
 }
