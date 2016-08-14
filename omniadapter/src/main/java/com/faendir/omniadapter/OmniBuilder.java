@@ -52,6 +52,8 @@ public class OmniBuilder<T extends Component> {
     private SparseArray<String> enabledUndoActions;
     @NonNull
     private String undoText;
+    @NonNull
+    private List<OmniAdapter.UndoListener<T>> undoListeners;
 
     public OmniBuilder(@NonNull Context context, @NonNull DeepObservableList<? extends T> dataSource, @NonNull OmniAdapter.Controller<T> controller) {
         this.context = context;
@@ -72,6 +74,7 @@ public class OmniBuilder<T extends Component> {
         selectionListeners = new ArrayList<>();
         enabledUndoActions = new SparseArray<>();
         undoText = "Undo";
+        undoListeners = new ArrayList<>();
     }
 
     public OmniBuilder<T> setClick(@NonNull Action.Click click) {
@@ -144,6 +147,11 @@ public class OmniBuilder<T extends Component> {
 
     public OmniBuilder<T> setUndoButtonText(@NonNull String undoText) {
         this.undoText = undoText;
+        return this;
+    }
+
+    public OmniBuilder<T> addUndoListener(OmniAdapter.UndoListener<T> listener){
+        this.undoListeners.add(listener);
         return this;
     }
 

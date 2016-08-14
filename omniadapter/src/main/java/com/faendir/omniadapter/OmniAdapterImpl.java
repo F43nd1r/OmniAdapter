@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.support.annotation.ColorInt;
 import android.support.annotation.IntRange;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
@@ -44,19 +45,22 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
     private final SparseArray<String> undoActions;
     private final String undo;
     private final EventListenerSupport<SelectionListener<T>> selectionListener;
+    private final EventListenerSupport<UndoListener<T>> undoListener;
     private List<T> visible;
     private boolean bufferedUpdate;
     private boolean restoring;
     private boolean dragging;
     private List<ChangeInformation<T>> dragChanges;
     private RecyclerView recyclerView;
+    @Nullable
+    private Snackbar activeSnackbar;
 
     OmniAdapterImpl(Context context, DeepObservableList<? extends T> basis, Controller<T> controller,
                     Action.Click click, Action.LongClick longClick, Action.Swipe swipeToLeft, Action.Swipe swipeToRight,
                     RecyclerView.LayoutManager layoutManager,
                     int highlightColor, int selectionColor, SelectionMode selectionMode,
                     int expandUntilLevelOnStartup, boolean deselectChildrenOnCollapse,
-                    List<SelectionListener<T>> selectionListeners, SparseArray<String> undoActions, String undo) {
+                    List<SelectionListener<T>> selectionListeners, SparseArray<String> undoActions, String undo, List<UndoListener<T>> undoListeners) {
         this.click = click;
         this.longClick = longClick;
         this.swipeToLeft = swipeToLeft;
@@ -68,10 +72,8 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         this.deselectChildrenOnCollapse = deselectChildrenOnCollapse;
         this.undoActions = undoActions;
         this.undo = undo;
-        selectionListener = Utils.createGenericEventListenerSupport(SelectionListener.class);
-        for (SelectionListener<T> listener : selectionListeners) {
-            selectionListener.addListener(listener);
-        }
+        selectionListener = Utils.createGenericEventListenerSupport(SelectionListener.class, selectionListeners);
+        undoListener = Utils.createGenericEventListenerSupport(UndoListener.class, undoListeners);
         setHasStableIds(true);
         bufferedUpdate = false;
         //noinspection unchecked
@@ -150,6 +152,14 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         super.onAttachedToRecyclerView(recyclerView);
         recyclerView.setLayoutManager(layoutManager);
         touchHelper.attachToRecyclerView(recyclerView);
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                if (activeSnackbar != null) {
+                    activeSnackbar.dismiss();
+                }
+            }
+        });
     }
 
     @Override
@@ -207,6 +217,9 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
             public void run() {
                 if (!action.getListener().allowTrigger(component, actionId)) {
                     return;
+                }
+                if (activeSnackbar != null) {
+                    activeSnackbar.dismiss();
                 }
                 mainHandler.post(new Runnable() {
                     @Override
@@ -322,8 +335,8 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         if (!dragging) {
             if (!restoring) {
                 List<ChangeInformation<T>> additions = new ArrayList<>();
-                final List<ChangeInformation<T>> removals = new ArrayList<>();
-                final List<ChangeInformation<T>> moves = new ArrayList<>();
+                List<ChangeInformation<T>> removals = new ArrayList<>();
+                List<ChangeInformation<T>> moves = new ArrayList<>();
                 for (ChangeInformation<T> change : changeInfo) {
                     switch (change.getType()) {
                         case ADD:
@@ -340,13 +353,14 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
                 final boolean remove = undoActions.get(Action.REMOVE) != null && !removals.isEmpty() && additions.isEmpty() && moves.isEmpty();
                 final boolean move = undoActions.get(Action.MOVE) != null && removals.isEmpty() && additions.isEmpty() && !moves.isEmpty();
                 if (remove || move) {
-                    Snackbar.make(recyclerView, undoActions.get(remove ? Action.REMOVE : Action.MOVE), Snackbar.LENGTH_INDEFINITE)
+                    final List<ChangeInformation<T>> changes = remove ? removals : moves;
+                    activeSnackbar = Snackbar.make(recyclerView, undoActions.get(remove ? Action.REMOVE : Action.MOVE), Snackbar.LENGTH_INDEFINITE)
                             .setAction(undo, new View.OnClickListener() {
                                 @Override
                                 public void onClick(View view) {
                                     restoring = true;
                                     basis.beginBatchedUpdates();
-                                    for (ChangeInformation<T> change : remove ? removals : moves) {
+                                    for (ChangeInformation<T> change : changes) {
                                         if (move) {
                                             change.getNewParent().remove(change.getComponent());
                                         }
@@ -354,9 +368,17 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
                                     }
                                     basis.endBatchedUpdates();
                                     restoring = false;
+                                    activeSnackbar = null;
+                                    undoListener.fire().onActionReverted(changes);
                                 }
-                            })
-                            .show();
+                            }).setCallback(new Snackbar.Callback() {
+                                @Override
+                                public void onDismissed(Snackbar snackbar, int event) {
+                                    activeSnackbar = null;
+                                    undoListener.fire().onActionPersisted(changes);
+                                }
+                            });
+                    activeSnackbar.show();
                 }
             }
         } else {

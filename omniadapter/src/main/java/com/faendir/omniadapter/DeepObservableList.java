@@ -43,22 +43,10 @@ public class DeepObservableList<T extends Component> extends ArrayList<T> {
 
     public void addListener(Listener<T> listener) {
         listeners.addListener(listener);
-        for (Component component : this) {
-            if (component instanceof Composite) {
-                //noinspection unchecked
-                ((Composite<T>) component).addListener(listener);
-            }
-        }
     }
 
     public void removeListener(Listener<T> listener) {
         listeners.removeListener(listener);
-        for (Component component : this) {
-            if (component instanceof Composite) {
-                //noinspection unchecked
-                ((Composite<T>) component).removeListener(listener);
-            }
-        }
     }
 
     public void setFilter(VisibleFilter filter) {

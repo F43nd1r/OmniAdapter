@@ -87,4 +87,10 @@ public interface OmniAdapter<T extends Component> {
             return true;
         }
     }
+
+    interface UndoListener<T extends Component> {
+        void onActionPersisted(List<ChangeInformation<T>> changes);
+
+        void onActionReverted(List<ChangeInformation<T>> changes);
+    }
 }

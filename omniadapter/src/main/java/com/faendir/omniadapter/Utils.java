@@ -103,6 +103,14 @@ final class Utils {
         return (EventListenerSupport<T>) new EventListenerSupport<>(listener);
     }
 
+    static <T> EventListenerSupport<T> createGenericEventListenerSupport(Class<? super T> listener, List<? extends T> listeners) {
+        EventListenerSupport<T> support = createGenericEventListenerSupport(listener);
+        for (T l : listeners) {
+            support.addListener(l);
+        }
+        return support;
+    }
+
     static <T extends Component> Collection<ChangeInformation<T>> compileChanges(List<ChangeInformation<T>> changes) {
         Collections.sort(changes);
         Map<T, ChangeInformation<T>> map = new HashMap<>();
@@ -122,7 +130,7 @@ final class Utils {
                     case MOVE:
                         if (prevChange.getType() == ChangeInformation.Type.ADD) {
                             map.put(component, ChangeInformation.addInfo(component, change.getNewParent()));
-                        }else {
+                        } else {
                             map.put(component, ChangeInformation.moveInfo(component, prevChange.getFormerParent(), prevChange.getFormerPosition(), change.getNewParent()));
                         }
                         break;
