@@ -14,7 +14,6 @@ import java.util.List;
  *
  * @author F43nd1r
  */
-
 public class DeepObservableList<T extends Component> extends ArrayList<T> {
 
     static <E extends Component> DeepObservableList<E> emptyList() {
@@ -67,20 +66,6 @@ public class DeepObservableList<T extends Component> extends ArrayList<T> {
         }
     }
 
-    List<T> flatView() {
-        List<T> list = new ArrayList<>();
-        for (T component : this) {
-            if (filter.accept(component)) {
-                list.add(component);
-            }
-            if (component instanceof Composite && component.getState().isExpanded()) {
-                //noinspection unchecked
-                list.addAll(((Composite<T>) component).flatView());
-            }
-        }
-        return list;
-    }
-
     public void beginBatchedUpdates() {
         suppress = true;
         for (T component : this) {
@@ -101,6 +86,20 @@ public class DeepObservableList<T extends Component> extends ArrayList<T> {
         }
         suppress = false;
         listChanged(true);
+    }
+
+    List<T> flatView() {
+        List<T> list = new ArrayList<>();
+        for (T component : this) {
+            if (filter.accept(component)) {
+                list.add(component);
+            }
+            if (component instanceof Composite && component.getState().isExpanded()) {
+                //noinspection unchecked
+                list.addAll(((Composite<T>) component).flatView());
+            }
+        }
+        return list;
     }
 
 

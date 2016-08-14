@@ -46,11 +46,11 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
     private final String undo;
     private final EventListenerSupport<SelectionListener<T>> selectionListener;
     private final EventListenerSupport<UndoListener<T>> undoListener;
+    private final List<ChangeInformation<T>> dragChanges;
     private List<T> visible;
     private boolean bufferedUpdate;
     private boolean restoring;
     private boolean dragging;
-    private List<ChangeInformation<T>> dragChanges;
     private RecyclerView recyclerView;
     @Nullable
     private Snackbar activeSnackbar;

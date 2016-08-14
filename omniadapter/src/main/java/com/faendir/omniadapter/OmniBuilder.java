@@ -20,7 +20,6 @@ import java.util.List;
  * @author F43nd1r
  */
 
-@SuppressWarnings("unused")
 public class OmniBuilder<T extends Component> {
     @NonNull
     private final Context context;
@@ -150,7 +149,7 @@ public class OmniBuilder<T extends Component> {
         return this;
     }
 
-    public OmniBuilder<T> addUndoListener(OmniAdapter.UndoListener<T> listener){
+    public OmniBuilder<T> addUndoListener(OmniAdapter.UndoListener<T> listener) {
         this.undoListeners.add(listener);
         return this;
     }
@@ -159,7 +158,8 @@ public class OmniBuilder<T extends Component> {
         OmniAdapterImpl<T> adapter = new OmniAdapterImpl<>(context, dataSource, controller,
                 click, longClick, swipeToLeft, swipeToRight, layoutManager,
                 highlightColor, selectionColor, selectionMode, expandUntilLevelOnStartup,
-                deselectChildrenOnCollapse, selectionListeners, enabledUndoActions, undoText);
+                deselectChildrenOnCollapse, selectionListeners,
+                enabledUndoActions, undoText, undoListeners);
         recyclerView.setAdapter(adapter);
         return adapter;
     }

@@ -17,7 +17,7 @@ class ComponentViewHolder<T extends Component> extends RecyclerView.ViewHolder i
     private T component;
     @Nullable
     private Listener<T> listener;
-    private int level;
+    private final int level;
 
     ComponentViewHolder(View view, int level, @ColorInt int highlightColor, @ColorInt int selectionColor) {
         super(view);

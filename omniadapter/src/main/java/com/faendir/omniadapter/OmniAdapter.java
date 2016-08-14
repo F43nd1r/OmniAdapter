@@ -13,7 +13,6 @@ import java.util.List;
  *
  * @author F43nd1r
  */
-@SuppressWarnings("unused")
 public interface OmniAdapter<T extends Component> {
     void clearSelection();
 
@@ -25,7 +24,6 @@ public interface OmniAdapter<T extends Component> {
 
     void notifyItemUpdated(T component);
 
-    @SuppressWarnings("unchecked")
     void notifyItemsUpdated(T... components);
 
     void notifyItemsUpdated(Collection<? extends T> components);
