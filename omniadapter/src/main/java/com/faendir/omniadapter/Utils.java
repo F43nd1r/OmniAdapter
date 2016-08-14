@@ -54,8 +54,8 @@ final class Utils {
         for (Component c : search) {
             if (c.equals(component)) {
                 return 0;
-            } else if (c instanceof DeepObservableList) {
-                int level = findLevel((DeepObservableList<? extends Component>) c, component);
+            } else if (c instanceof Composite) {
+                int level = findLevel(((Composite<? extends Component>) c).getChildren(), component);
                 if (level != -1) return level + 1;
             }
         }
@@ -67,9 +67,9 @@ final class Utils {
             if (c.equals(component)) {
                 //noinspection unchecked
                 return (DeepObservableList<T>) search;
-            } else if (c instanceof DeepObservableList) {
+            } else if (c instanceof Composite) {
                 //noinspection unchecked
-                DeepObservableList<T> list = findParent((DeepObservableList<T>) c, component);
+                DeepObservableList<T> list = findParent(((Composite<T>) c).getChildren(), component);
                 if (!list.isEmpty()) return list;
             }
         }
@@ -81,7 +81,7 @@ final class Utils {
             @Override
             public void visit(T component, int level) {
                 if (level <= expandUntilLevel && component instanceof Composite && controller.isExpandable(component)) {
-                    component.getState().setExpanded(true);
+                    ((Composite)component).getState().setExpanded(true);
                 }
             }
         });

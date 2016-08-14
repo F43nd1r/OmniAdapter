@@ -10,13 +10,15 @@ import java.util.UUID;
  * @author F43nd1r
  */
 
-public class Composite<T extends Component> extends DeepObservableList<T> implements Component {
+public class Composite<T extends Component> implements Component {
     private final UUID uuid;
     private final State state;
+    private final DeepObservableList<T> children;
 
     public Composite() {
         uuid = UUID.randomUUID();
         state = new State();
+        children = new DeepObservableList<>();
     }
 
     @Override
@@ -44,5 +46,31 @@ public class Composite<T extends Component> extends DeepObservableList<T> implem
     @Override
     public State getState() {
         return state;
+    }
+
+    public final DeepObservableList<T> getChildren(){
+        return children;
+    }
+
+    public static class State extends Component.State{
+        private boolean expanded;
+        public State(){
+            expanded = false;
+        }
+
+        public boolean isExpanded() {
+            return expanded;
+        }
+
+        public void setExpanded(boolean expanded) {
+            boolean old = this.expanded;
+            this.expanded = expanded;
+            if(old != expanded && getListener() != null && getListener() instanceof Listener){
+                ((Listener) getListener()).onExpansionToggled(expanded);
+            }
+        }
+        public interface Listener extends Component.State.Listener{
+            void onExpansionToggled(boolean newValue);
+        }
     }
 }

@@ -15,27 +15,13 @@ public interface Component {
     State getState();
 
     class State {
-        private boolean expanded;
         private boolean selected;
         private boolean enabled;
         private transient Listener listener;
 
         public State() {
-            expanded = false;
             selected = false;
             enabled = true;
-        }
-
-        public boolean isExpanded() {
-            return expanded;
-        }
-
-        public void setExpanded(boolean expanded) {
-            boolean old = this.expanded;
-            this.expanded = expanded;
-            if(old != expanded && listener != null){
-                listener.onExpansionToggled(expanded);
-            }
         }
 
         public boolean isSelected() {
@@ -78,7 +64,6 @@ public interface Component {
 
         interface Listener {
             void onSelectionToggled(boolean newValue);
-            void onExpansionToggled(boolean newValue);
             void onEnabledToggled(boolean newValue);
         }
 

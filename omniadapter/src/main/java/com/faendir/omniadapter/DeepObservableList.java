@@ -61,9 +61,9 @@ public class DeepObservableList<T extends Component> extends ArrayList<T> {
     private void visitDeep(ComponentVisitor<T> visitor, int level) {
         for (T component : this) {
             visitor.visit(component, level);
-            if (component instanceof Composite && component.getState().isExpanded()) {
+            if (component instanceof Composite && ((Composite)component).getState().isExpanded()) {
                 //noinspection unchecked
-                ((DeepObservableList<T>) component).visitDeep(visitor, level + 1);
+                (((Composite<T>) component).getChildren()).visitDeep(visitor, level + 1);
             }
         }
     }
@@ -71,9 +71,9 @@ public class DeepObservableList<T extends Component> extends ArrayList<T> {
     public void beginBatchedUpdates() {
         suppress = true;
         for (T component : this) {
-            if (component instanceof DeepObservableList) {
+            if (component instanceof Composite) {
                 //noinspection unchecked
-                ((DeepObservableList<T>) component).beginBatchedUpdates();
+                ((Composite<T>) component).getChildren().beginBatchedUpdates();
             }
         }
 
@@ -81,9 +81,9 @@ public class DeepObservableList<T extends Component> extends ArrayList<T> {
 
     public void endBatchedUpdates() {
         for (T component : this) {
-            if (component instanceof DeepObservableList) {
+            if (component instanceof Composite) {
                 //noinspection unchecked
-                ((DeepObservableList<T>) component).endBatchedUpdates();
+                ((Composite<T>) component).getChildren().endBatchedUpdates();
             }
         }
         suppress = false;
@@ -96,9 +96,9 @@ public class DeepObservableList<T extends Component> extends ArrayList<T> {
             if (filter.accept(component)) {
                 list.add(component);
             }
-            if (component instanceof Composite && component.getState().isExpanded()) {
+            if (component instanceof Composite && ((Composite)component).getState().isExpanded()) {
                 //noinspection unchecked
-                list.addAll(((Composite<T>) component).flatView());
+                list.addAll(((Composite<T>) component).getChildren().flatView());
             }
         }
         return list;
@@ -138,9 +138,9 @@ public class DeepObservableList<T extends Component> extends ArrayList<T> {
 
     private void beforeRemove(T component) {
         if (contains(component)) {
-            if (component instanceof DeepObservableList) {
+            if (component instanceof Composite) {
                 //noinspection unchecked
-                ((DeepObservableList<T>) component).removeListener(childListener);
+                ((Composite<T>) component).getChildren().removeListener(childListener);
             }
             changeInfos.add(ChangeInformation.removeInfo(component, this, indexOf(component)));
         }
@@ -153,9 +153,9 @@ public class DeepObservableList<T extends Component> extends ArrayList<T> {
     }
 
     private void afterAdd(T component) {
-        if (component instanceof DeepObservableList) {
+        if (component instanceof Composite) {
             //noinspection unchecked
-            ((DeepObservableList<T>) component).addListener(childListener);
+            ((Composite<T>) component).getChildren().addListener(childListener);
         }
         changeInfos.add(ChangeInformation.addInfo(component, this));
     }

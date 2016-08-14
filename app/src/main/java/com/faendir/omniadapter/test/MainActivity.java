@@ -22,7 +22,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recyclerView);
         observableList = new DeepObservableList<>();
         Composite composite = new Composite("base");
-        composite.add(new Leaf("leaf"));
+        composite.getChildren().add(new Leaf("leaf"));
         observableList.add(composite);
         OmniAdapter<Component> adapter = new OmniBuilder<>(this, observableList,new SimpleOmniController())
                 .setClick(new Action.Click(Action.SELECT)
@@ -38,8 +38,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View view) {
         Composite components = new Composite("new" + counter);
-        ((Composite) observableList.get(0)).add(components);
-        components.add(new Leaf("leaf" + counter));
+        ((Composite) observableList.get(0)).getChildren().add(components);
+        components.getChildren().add(new Leaf("leaf" + counter));
         counter++;
     }
 

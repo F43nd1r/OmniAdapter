@@ -319,11 +319,12 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
     }
 
     private boolean toggleExpansion(T component) {
-        if (component instanceof Composite && !((Composite) component).isEmpty() && controller.isExpandable(component)) {
-            component.getState().setExpanded(!component.getState().isExpanded());
+        if (component instanceof Composite && !((Composite) component).getChildren().isEmpty() && controller.isExpandable(component)) {
+            Composite.State state = ((Composite)component).getState();
+            state.setExpanded(!state.isExpanded());
             if (deselectChildrenOnCollapse) {
                 //noinspection unchecked
-                Utils.clearSelection((DeepObservableList<Component>) component);
+                Utils.clearSelection(((Composite) component).getChildren());
             }
             return true;
         }
@@ -353,31 +354,9 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
                 final boolean remove = undoActions.get(Action.REMOVE) != null && !removals.isEmpty() && additions.isEmpty() && moves.isEmpty();
                 final boolean move = undoActions.get(Action.MOVE) != null && removals.isEmpty() && additions.isEmpty() && !moves.isEmpty();
                 if (remove || move) {
-                    final List<ChangeInformation<T>> changes = remove ? removals : moves;
+                    SnackbarListener listener = new SnackbarListener(remove ? removals : moves, move);
                     activeSnackbar = Snackbar.make(recyclerView, undoActions.get(remove ? Action.REMOVE : Action.MOVE), Snackbar.LENGTH_INDEFINITE)
-                            .setAction(undo, new View.OnClickListener() {
-                                @Override
-                                public void onClick(View view) {
-                                    restoring = true;
-                                    basis.beginBatchedUpdates();
-                                    for (ChangeInformation<T> change : changes) {
-                                        if (move) {
-                                            change.getNewParent().remove(change.getComponent());
-                                        }
-                                        change.getFormerParent().add(change.getFormerPosition(), change.getComponent());
-                                    }
-                                    basis.endBatchedUpdates();
-                                    restoring = false;
-                                    activeSnackbar = null;
-                                    undoListener.fire().onActionReverted(changes);
-                                }
-                            }).setCallback(new Snackbar.Callback() {
-                                @Override
-                                public void onDismissed(Snackbar snackbar, int event) {
-                                    activeSnackbar = null;
-                                    undoListener.fire().onActionPersisted(changes);
-                                }
-                            });
+                            .setAction(undo, listener).setCallback(listener);
                     activeSnackbar.show();
                 }
             }
@@ -430,7 +409,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         List<T> list = new ArrayList<>();
         if (parent instanceof Composite)
             //noinspection unchecked
-            for (T component : (Composite<T>) parent) {
+            for (T component : ((Composite<T>) parent).getChildren()) {
                 if (visible.contains(component)) {
                     list.add(component);
                 }
@@ -480,22 +459,27 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
             T from = fromHolder.getComponent();
             T to = toHolder.getComponent();
             DeepObservableList<T> toList;
+            int index;
             if (fromHolder.getLevel() == toHolder.getLevel()) {
                 toList = Utils.findParent(basis, to);
+                index = toList.indexOf(to);
             } else if (fromHolder.getLevel() == toHolder.getLevel() + 1 && to instanceof Composite) {
                 //noinspection unchecked
-                toList = (DeepObservableList) to;
-                if (!to.getState().isExpanded()) toggleExpansion(to);
+                toList = ((Composite<T>) to).getChildren();
+                if (!((Composite)to).getState().isExpanded()) toggleExpansion(to);
+                index = toList.size();
             } else {
                 return false;
             }
             DeepObservableList<T> fromList = Utils.findParent(basis, from);
-            assert toList != null && fromList != null;
+            if(fromList.equals(toList) && fromList.indexOf(from) < index){
+                index--;
+            }
             if (!controller.shouldMove(from, fromList, fromList.indexOf(from), toList, toList.indexOf(to))) {
                 return false;
             }
             fromList.remove(from);
-            toList.add(toList.equals(to) ? toList.size() : toList.indexOf(to), from);
+            toList.add(index, from);
             return true;
         }
 
@@ -528,6 +512,44 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
             if (controller.shouldSwipe(holder.getComponent(), direction)) {
                 //noinspection unchecked
                 executeAction(direction == ItemTouchHelper.LEFT ? swipeToLeft : swipeToRight, holder);
+            }
+        }
+    }
+
+    private class SnackbarListener extends Snackbar.Callback implements View.OnClickListener {
+        private final List<ChangeInformation<T>> changes;
+        private final boolean isMove;
+        private boolean reverted;
+
+        private SnackbarListener(List<ChangeInformation<T>> changes, boolean isMove) {
+            this.changes = changes;
+            this.isMove = isMove;
+            reverted = false;
+        }
+
+        @Override
+        public void onClick(View view) {
+            restoring = true;
+            basis.beginBatchedUpdates();
+            for (ChangeInformation<T> change : changes) {
+                if (isMove) {
+                    change.getNewParent().remove(change.getComponent());
+                }
+                change.getFormerParent().add(change.getFormerPosition(), change.getComponent());
+            }
+            basis.endBatchedUpdates();
+            restoring = false;
+            activeSnackbar = null;
+            undoListener.fire().onActionReverted(changes);
+            reverted = true;
+        }
+
+        @Override
+        public void onDismissed(Snackbar snackbar, int event) {
+            super.onDismissed(snackbar, event);
+            activeSnackbar = null;
+            if (!reverted) {
+                undoListener.fire().onActionPersisted(changes);
             }
         }
     }

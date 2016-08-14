@@ -12,7 +12,7 @@ import android.view.View;
  * @author F43nd1r
  */
 
-class ComponentViewHolder<T extends Component> extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener, Component.State.Listener {
+class ComponentViewHolder<T extends Component> extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener, Composite.State.Listener {
     private final View view;
     private T component;
     @Nullable
