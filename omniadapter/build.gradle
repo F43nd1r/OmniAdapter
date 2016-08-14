@@ -13,7 +13,7 @@ ext {
     siteUrl = 'https://github.com/F43nd1r/OmniAdapter'
     gitUrl = 'https://github.com/F43nd1r/OmniAdapter.git'
 
-    libraryVersion = "0.1-SNAPSHOT"
+    libraryVersion = "0.3-SNAPSHOT"
     versionCode = 1
     sdkVersion = 24
     supportVersion = "24.1.1"

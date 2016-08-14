@@ -40,12 +40,14 @@ public class DeepObservableList<T extends Component> extends ArrayList<T> {
         afterAdd(c);
     }
 
-    public void addListener(Listener<T> listener) {
-        listeners.addListener(listener);
+    public void addListener(Listener<? super T> listener) {
+        //noinspection unchecked
+        listeners.addListener((Listener<T>) listener);
     }
 
-    public void removeListener(Listener<T> listener) {
-        listeners.removeListener(listener);
+    public void removeListener(Listener<? super T> listener) {
+        //noinspection unchecked
+        listeners.removeListener((Listener<T>) listener);
     }
 
     public void setFilter(VisibleFilter filter) {

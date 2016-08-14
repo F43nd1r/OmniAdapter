@@ -1,6 +1,5 @@
 package com.faendir.omniadapter.test;
 
-import android.support.annotation.LayoutRes;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,15 +16,9 @@ import com.faendir.omniadapter.OmniAdapter;
 
 public class SimpleOmniController extends OmniAdapter.BaseController<Component> {
 
-    private final int[] layoutRes;
-
-    public SimpleOmniController(@LayoutRes int... layoutRes) {
-        this.layoutRes = layoutRes;
-    }
-
     @Override
     public View createView(ViewGroup parent, int level) {
-        return LayoutInflater.from(parent.getContext()).inflate(layoutRes[level < layoutRes.length ? level : layoutRes.length - 1], parent, false);
+        return LayoutInflater.from(parent.getContext()).inflate(android.R.layout.simple_list_item_1, parent, false);
     }
 
     @Override
