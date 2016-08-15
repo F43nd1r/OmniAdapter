@@ -320,7 +320,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
 
     private boolean toggleExpansion(T component) {
         if (component instanceof Composite && !((Composite) component).getChildren().isEmpty() && controller.isExpandable(component)) {
-            Composite.State state = ((Composite)component).getState();
+            Composite.State state = ((Composite) component).getState();
             state.setExpanded(!state.isExpanded());
             if (deselectChildrenOnCollapse) {
                 //noinspection unchecked
@@ -351,10 +351,10 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
                             break;
                     }
                 }
-                final boolean remove = undoActions.get(Action.REMOVE) != null && !removals.isEmpty() && additions.isEmpty() && moves.isEmpty();
+                final boolean remove = undoActions.get(Action.REMOVE) != null && !removals.isEmpty() && additions.isEmpty();
                 final boolean move = undoActions.get(Action.MOVE) != null && removals.isEmpty() && additions.isEmpty() && !moves.isEmpty();
                 if (remove || move) {
-                    SnackbarListener listener = new SnackbarListener(remove ? removals : moves, move);
+                    SnackbarListener listener = new SnackbarListener(remove ? removals : moves, !remove);
                     activeSnackbar = Snackbar.make(recyclerView, undoActions.get(remove ? Action.REMOVE : Action.MOVE), Snackbar.LENGTH_INDEFINITE)
                             .setAction(undo, listener).setCallback(listener);
                     activeSnackbar.show();
@@ -466,13 +466,13 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
             } else if (fromHolder.getLevel() == toHolder.getLevel() + 1 && to instanceof Composite) {
                 //noinspection unchecked
                 toList = ((Composite<T>) to).getChildren();
-                if (!((Composite)to).getState().isExpanded()) toggleExpansion(to);
+                if (!((Composite) to).getState().isExpanded()) toggleExpansion(to);
                 index = toList.size();
             } else {
                 return false;
             }
             DeepObservableList<T> fromList = Utils.findParent(basis, from);
-            if(fromList.equals(toList) && fromList.indexOf(from) < index){
+            if (fromList.equals(toList) && fromList.indexOf(from) < index) {
                 index--;
             }
             if (!controller.shouldMove(from, fromList, fromList.indexOf(from), toList, toList.indexOf(to))) {
@@ -520,6 +520,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         private final List<ChangeInformation<T>> changes;
         private final boolean isMove;
         private boolean reverted;
+        private Snackbar snackbar;
 
         private SnackbarListener(List<ChangeInformation<T>> changes, boolean isMove) {
             this.changes = changes;
@@ -545,9 +546,17 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         }
 
         @Override
+        public void onShown(Snackbar snackbar) {
+            super.onShown(snackbar);
+            this.snackbar = snackbar;
+        }
+
+        @Override
         public void onDismissed(Snackbar snackbar, int event) {
             super.onDismissed(snackbar, event);
-            activeSnackbar = null;
+            if (activeSnackbar == snackbar) {
+                activeSnackbar = null;
+            }
             if (!reverted) {
                 undoListener.fire().onActionPersisted(changes);
             }

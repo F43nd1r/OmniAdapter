@@ -73,7 +73,7 @@ final class Utils {
                 if (!list.isEmpty()) return list;
             }
         }
-        return DeepObservableList.emptyList();
+        return new DeepObservableList<>();
     }
 
     static <T extends Component> void expandUntilLevel(DeepObservableList<T> list, final OmniAdapter.Controller<T> controller, final int expandUntilLevel) {

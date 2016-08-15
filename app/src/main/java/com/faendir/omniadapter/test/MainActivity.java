@@ -11,6 +11,8 @@ import com.faendir.omniadapter.DeepObservableList;
 import com.faendir.omniadapter.OmniAdapter;
 import com.faendir.omniadapter.OmniBuilder;
 
+import java.util.LinkedList;
+
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     DeepObservableList<Component> observableList;
     int counter = 0;
@@ -20,7 +22,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recyclerView);
-        observableList = new DeepObservableList<>();
+        observableList = DeepObservableList.copyOf(new LinkedList<Component>());
         Composite composite = new Composite("base");
         composite.getChildren().add(new Leaf("leaf"));
         observableList.add(composite);
