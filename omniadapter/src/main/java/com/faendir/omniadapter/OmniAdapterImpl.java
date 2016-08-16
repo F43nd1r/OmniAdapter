@@ -46,6 +46,8 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
     private final String undo;
     private final EventListenerSupport<SelectionListener<T>> selectionListener;
     private final EventListenerSupport<UndoListener<T>> undoListener;
+    private final int insetDpPerLevel;
+    private final boolean insetAsMargin;
     private final List<ChangeInformation<T>> dragChanges;
     private List<T> visible;
     private boolean bufferedUpdate;
@@ -60,7 +62,8 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
                     RecyclerView.LayoutManager layoutManager,
                     int highlightColor, int selectionColor, SelectionMode selectionMode,
                     int expandUntilLevelOnStartup, boolean deselectChildrenOnCollapse,
-                    List<SelectionListener<T>> selectionListeners, SparseArray<String> undoActions, String undo, List<UndoListener<T>> undoListeners) {
+                    List<SelectionListener<T>> selectionListeners, SparseArray<String> undoActions, String undo, List<UndoListener<T>> undoListeners,
+                    int insetDpPerLevel, boolean insetAsMargin) {
         this.click = click;
         this.longClick = longClick;
         this.swipeToLeft = swipeToLeft;
@@ -74,6 +77,8 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         this.undo = undo;
         selectionListener = Utils.createGenericEventListenerSupport(SelectionListener.class, selectionListeners);
         undoListener = Utils.createGenericEventListenerSupport(UndoListener.class, undoListeners);
+        this.insetDpPerLevel = insetDpPerLevel;
+        this.insetAsMargin = insetAsMargin;
         setHasStableIds(true);
         bufferedUpdate = false;
         //noinspection unchecked
@@ -82,14 +87,14 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         dragChanges = new ArrayList<>();
         mainHandler = new Handler(context.getMainLooper());
         visible = this.basis.flatView();
-        touchHelper = new ItemTouchHelper(new TouchCallback());
+        touchHelper = new ItemTouchHelper(new TouchCallback().asCallback());
         Utils.expandUntilLevel(this.basis, controller, expandUntilLevelOnStartup);
         this.basis.addListener(this);
     }
 
     @Override
     public ComponentViewHolder<T> onCreateViewHolder(ViewGroup parent, int viewType) {
-        ComponentViewHolder<T> componentViewHolder = new ComponentViewHolder<>(controller.createView(parent, viewType), viewType, highlightColor, selectionColor);
+        ComponentViewHolder<T> componentViewHolder = new ComponentViewHolder<>(controller.createView(parent, viewType), viewType, highlightColor, selectionColor, insetDpPerLevel, insetAsMargin);
         componentViewHolder.setListener(this);
         return componentViewHolder;
     }
@@ -155,9 +160,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
-                if (activeSnackbar != null) {
-                    activeSnackbar.dismiss();
-                }
+                commitPendingUndoIfAny();
             }
         });
     }
@@ -218,9 +221,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
                 if (!action.getListener().allowTrigger(component, actionId)) {
                     return;
                 }
-                if (activeSnackbar != null) {
-                    activeSnackbar.dismiss();
-                }
+                commitPendingUndoIfAny();
                 mainHandler.post(new Runnable() {
                     @Override
                     public void run() {
@@ -322,13 +323,19 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         if (component instanceof Composite && !((Composite) component).getChildren().isEmpty() && controller.isExpandable(component)) {
             Composite.State state = ((Composite) component).getState();
             state.setExpanded(!state.isExpanded());
-            if (deselectChildrenOnCollapse) {
-                //noinspection unchecked
+            if (deselectChildrenOnCollapse && !state.isExpanded()) {
                 Utils.clearSelection(((Composite) component).getChildren());
             }
             return true;
         }
         return false;
+    }
+
+    @Override
+    public void commitPendingUndoIfAny() {
+        if (activeSnackbar != null) {
+            activeSnackbar.dismiss();
+        }
     }
 
     @Override
@@ -387,13 +394,13 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
 
     @NonNull
     @Override
-    public List<? extends T> getVisible() {
+    public List<T> getVisible() {
         return new ArrayList<>(visible);
     }
 
     @NonNull
     @Override
-    public List<? extends T> getVisibleByLevel(@IntRange(from = 0) int level) {
+    public List<T> getVisibleByLevel(@IntRange(from = 0) int level) {
         List<T> list = new ArrayList<>();
         for (T component : visible) {
             if (Utils.findLevel(basis, component) == level) {
@@ -405,7 +412,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
 
     @NonNull
     @Override
-    public List<? extends T> getVisibleByParent(T parent) {
+    public List<T> getVisibleByParent(T parent) {
         List<T> list = new ArrayList<>();
         if (parent instanceof Composite)
             //noinspection unchecked
@@ -427,14 +434,10 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         return visible.contains(component);
     }
 
-    private class TouchCallback extends ItemTouchHelper.SimpleCallback {
-
-        TouchCallback() {
-            super(0, 0);
-        }
+    private class TouchCallback extends TypedItemTouchHelperCallback<ComponentViewHolder<T>> {
 
         @Override
-        public int getDragDirs(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
+        public int getDragDirs(RecyclerView recyclerView, ComponentViewHolder<T> viewHolder) {
             ComponentViewHolder holder = (ComponentViewHolder) viewHolder;
             return holder.getComponent().getState().isEnabled()
                     && longClick.resolve(holder.getComponent(), holder.getLevel()) == Action.DRAG
@@ -442,7 +445,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         }
 
         @Override
-        public int getSwipeDirs(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
+        public int getSwipeDirs(RecyclerView recyclerView, ComponentViewHolder<T> viewHolder) {
             ComponentViewHolder holder = (ComponentViewHolder) viewHolder;
             return holder.getComponent().getState().isEnabled()
                     ? (swipeToLeft.resolve(holder.getComponent(), holder.getLevel()) != Action.NONE ? ItemTouchHelper.LEFT : 0)
@@ -450,12 +453,8 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         }
 
         @Override
-        public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, RecyclerView.ViewHolder target) {
+        public boolean onMove(RecyclerView recyclerView, ComponentViewHolder<T> fromHolder, ComponentViewHolder<T> toHolder) {
             dragging = true;
-            //noinspection unchecked
-            ComponentViewHolder<T> fromHolder = (ComponentViewHolder<T>) viewHolder;
-            //noinspection unchecked
-            ComponentViewHolder<T> toHolder = (ComponentViewHolder<T>) target;
             T from = fromHolder.getComponent();
             T to = toHolder.getComponent();
             DeepObservableList<T> toList;
@@ -484,7 +483,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         }
 
         @Override
-        public void clearView(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
+        public void clearView(RecyclerView recyclerView, ComponentViewHolder<T> viewHolder) {
             super.clearView(recyclerView, viewHolder);
             dragging = false;
             onListChanged(new ArrayList<>(Utils.compileChanges(dragChanges)));
@@ -492,12 +491,9 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         }
 
         @Override
-        public RecyclerView.ViewHolder chooseDropTarget(RecyclerView.ViewHolder sel, List<RecyclerView.ViewHolder> dropTargets, int curX, int curY) {
-            //noinspection unchecked
-            ComponentViewHolder<T> selected = (ComponentViewHolder<T>) sel;
-            for (Iterator<RecyclerView.ViewHolder> iterator = dropTargets.iterator(); iterator.hasNext(); ) {
-                //noinspection unchecked
-                ComponentViewHolder<T> holder = (ComponentViewHolder<T>) iterator.next();
+        public RecyclerView.ViewHolder chooseDropTarget(ComponentViewHolder<T> selected, List<ComponentViewHolder<T>> dropTargets, int curX, int curY) {
+            for (Iterator<ComponentViewHolder<T>> iterator = dropTargets.iterator(); iterator.hasNext(); ) {
+                ComponentViewHolder<T> holder = iterator.next();
                 if (holder.getLevel() > selected.getLevel() || holder.getLevel() + 1 < selected.getLevel()) {
                     iterator.remove();
                 }
@@ -506,12 +502,13 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         }
 
         @Override
-        public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
-            //noinspection unchecked
-            ComponentViewHolder<T> holder = (ComponentViewHolder<T>) viewHolder;
+        public void onSwiped(ComponentViewHolder<T> holder, int direction) {
+            Action.BaseAction action = direction == ItemTouchHelper.LEFT ? swipeToLeft : swipeToRight;
+            if (action.resolve(holder.getComponent(), holder.getLevel()) != Action.REMOVE) {
+                notifyItemUpdated(holder.getComponent());
+            }
             if (controller.shouldSwipe(holder.getComponent(), direction)) {
-                //noinspection unchecked
-                executeAction(direction == ItemTouchHelper.LEFT ? swipeToLeft : swipeToRight, holder);
+                executeAction(action, holder);
             }
         }
     }
@@ -520,7 +517,6 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         private final List<ChangeInformation<T>> changes;
         private final boolean isMove;
         private boolean reverted;
-        private Snackbar snackbar;
 
         private SnackbarListener(List<ChangeInformation<T>> changes, boolean isMove) {
             this.changes = changes;
@@ -543,12 +539,6 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
             activeSnackbar = null;
             undoListener.fire().onActionReverted(changes);
             reverted = true;
-        }
-
-        @Override
-        public void onShown(Snackbar snackbar) {
-            super.onShown(snackbar);
-            this.snackbar = snackbar;
         }
 
         @Override

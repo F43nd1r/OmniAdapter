@@ -8,22 +8,32 @@
     tools:context="com.faendir.omniadapter.test.MainActivity">
 
     <Button
-        android:text="Button"
+        android:id="@+id/button_addLeaf"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/button"
-        android:onClick="onClick"
         android:layout_alignParentBottom="true"
         android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"/>
+        android:layout_alignParentStart="true"
+        android:onClick="onClick"
+        android:text="Add Leaf"/>
 
     <android.support.v7.widget.RecyclerView
+        android:id="@+id/recyclerView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/recyclerView"
-        android:layout_alignParentTop="true"
+        android:layout_above="@+id/button_addLeaf"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
-        android:layout_above="@+id/button"/>
+        android:layout_alignParentTop="true"/>
+
+    <Button
+        android:id="@+id/button_addComposite"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_toEndOf="@+id/button_addLeaf"
+        android:layout_toRightOf="@+id/button_addLeaf"
+        android:onClick="onClick"
+        android:text="Add Composite"/>
 
 </RelativeLayout>

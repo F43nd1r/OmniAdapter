@@ -19,7 +19,7 @@ import java.util.Map;
  */
 
 public class Action {
-    static final int NONE = 1 << 10;
+    public static final int NONE = 1 << 10;
     public static final int SELECT = 1;
     public static final int EXPAND = 1 << 1;
     public static final int DRAG = 1 << 2;

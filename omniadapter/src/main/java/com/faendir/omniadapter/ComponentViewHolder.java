@@ -19,13 +19,14 @@ class ComponentViewHolder<T extends Component> extends RecyclerView.ViewHolder i
     private Listener<T> listener;
     private final int level;
 
-    ComponentViewHolder(View view, int level, @ColorInt int highlightColor, @ColorInt int selectionColor) {
+    ComponentViewHolder(View view, int level, @ColorInt int highlightColor, @ColorInt int selectionColor, int insetDpPerLevel, boolean insetAsMargin) {
         super(view);
         this.view = view;
         view.setOnClickListener(this);
         view.setOnLongClickListener(this);
         this.level = level;
         Utils.setDrawable(view, highlightColor, selectionColor);
+        Utils.applyInset(view, insetDpPerLevel * level, insetAsMargin);
     }
 
     T getComponent() {

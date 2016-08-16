@@ -17,10 +17,10 @@ public interface OmniAdapter<T extends Component> {
     void clearSelection();
 
     @NonNull
-    List<? extends T> getSelection();
+    List<T> getSelection();
 
     @NonNull
-    List<? extends T> getSelectionByLevel(@IntRange(from = 0) int level);
+    List<T> getSelectionByLevel(@IntRange(from = 0) int level);
 
     void notifyItemUpdated(T component);
 
@@ -31,15 +31,17 @@ public interface OmniAdapter<T extends Component> {
     void notifyDataSetUpdated();
 
     @NonNull
-    List<? extends T> getVisible();
+    List<T> getVisible();
 
     @NonNull
-    List<? extends T> getVisibleByLevel(@IntRange(from = 0) int level);
+    List<T> getVisibleByLevel(@IntRange(from = 0) int level);
 
     @NonNull
-    List<? extends T> getVisibleByParent(T parent);
+    List<T> getVisibleByParent(T parent);
 
     int getVisibleCount();
+
+    void commitPendingUndoIfAny();
 
     boolean isVisible(T component);
 

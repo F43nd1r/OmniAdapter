@@ -46,13 +46,15 @@ public class OmniBuilder<T extends Component> {
     private int expandUntilLevelOnStartup;
     private boolean deselectChildrenOnCollapse;
     @NonNull
-    private List<OmniAdapter.SelectionListener<T>> selectionListeners;
+    private final List<OmniAdapter.SelectionListener<T>> selectionListeners;
     @NonNull
-    private SparseArray<String> enabledUndoActions;
+    private final SparseArray<String> enabledUndoActions;
     @NonNull
     private String undoText;
     @NonNull
-    private List<OmniAdapter.UndoListener<T>> undoListeners;
+    private final List<OmniAdapter.UndoListener<T>> undoListeners;
+    private int insetDpPerLevel;
+    private boolean insetAsMargin;
 
     public OmniBuilder(@NonNull Context context, @NonNull DeepObservableList<? extends T> dataSource, @NonNull OmniAdapter.Controller<T> controller) {
         this.context = context;
@@ -74,6 +76,8 @@ public class OmniBuilder<T extends Component> {
         enabledUndoActions = new SparseArray<>();
         undoText = "Undo";
         undoListeners = new ArrayList<>();
+        insetDpPerLevel = 0;
+        insetAsMargin = false;
     }
 
     public OmniBuilder<T> setClick(@NonNull Action.Click click) {
@@ -154,12 +158,22 @@ public class OmniBuilder<T extends Component> {
         return this;
     }
 
+    public OmniBuilder<T> setInsetDpPerLevel(int insetDpPerLevel) {
+        this.insetDpPerLevel = insetDpPerLevel;
+        return this;
+    }
+
+    public OmniBuilder<T> setInsetAsMargin(boolean insetAsMargin) {
+        this.insetAsMargin = insetAsMargin;
+        return this;
+    }
+
     public OmniAdapter<T> attach(RecyclerView recyclerView) {
         OmniAdapterImpl<T> adapter = new OmniAdapterImpl<>(context, dataSource, controller,
                 click, longClick, swipeToLeft, swipeToRight, layoutManager,
                 highlightColor, selectionColor, selectionMode, expandUntilLevelOnStartup,
                 deselectChildrenOnCollapse, selectionListeners,
-                enabledUndoActions, undoText, undoListeners);
+                enabledUndoActions, undoText, undoListeners, insetDpPerLevel, insetAsMargin);
         recyclerView.setAdapter(adapter);
         return adapter;
     }

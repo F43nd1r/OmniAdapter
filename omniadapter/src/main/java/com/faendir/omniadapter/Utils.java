@@ -9,6 +9,8 @@ import android.graphics.drawable.StateListDrawable;
 import android.graphics.drawable.shapes.RoundRectShape;
 import android.os.Build;
 import android.support.annotation.ColorInt;
+import android.support.v7.widget.RecyclerView;
+import android.util.DisplayMetrics;
 import android.view.View;
 
 import org.apache.commons.lang3.event.EventListenerSupport;
@@ -50,6 +52,18 @@ final class Utils {
         view.setBackgroundDrawable(background);
     }
 
+    static void applyInset(View view, int insetDp, boolean asMargin) {
+        DisplayMetrics displayMetrics = view.getContext().getResources().getDisplayMetrics();
+        int inset = Math.round(insetDp * displayMetrics.density);
+        if (asMargin) {
+            RecyclerView.LayoutParams layoutParams = (RecyclerView.LayoutParams) view.getLayoutParams();
+            layoutParams.leftMargin = layoutParams.leftMargin + inset;
+            view.setLayoutParams(layoutParams);
+        } else {
+            view.setPadding(view.getPaddingLeft() + inset, view.getPaddingTop(), view.getPaddingRight(), view.getPaddingBottom());
+        }
+    }
+
     static int findLevel(DeepObservableList<? extends Component> search, Component component) {
         for (Component c : search) {
             if (c.equals(component)) {
@@ -81,7 +95,7 @@ final class Utils {
             @Override
             public void visit(T component, int level) {
                 if (level <= expandUntilLevel && component instanceof Composite && controller.isExpandable(component)) {
-                    ((Composite)component).getState().setExpanded(true);
+                    ((Composite) component).getState().setExpanded(true);
                 }
             }
         });

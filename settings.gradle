@@ -1,1 +1,1 @@
-include ':app', ':omniadapter'
+include ':sample', ':omniadapter'
