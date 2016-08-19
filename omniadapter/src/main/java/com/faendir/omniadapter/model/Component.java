@@ -1,4 +1,4 @@
-package com.faendir.omniadapter;
+package com.faendir.omniadapter.model;
 
 import android.support.annotation.NonNull;
 
@@ -36,7 +36,7 @@ public interface Component {
             }
         }
 
-        void setListener(Listener listener) {
+        public void setListener(Listener listener) {
             this.listener = listener;
         }
 
@@ -44,7 +44,7 @@ public interface Component {
             return listener;
         }
 
-        void removeListener(Listener listener) {
+        public void removeListener(Listener listener) {
             if (this.listener.equals(listener)) {
                 this.listener = null;
             }

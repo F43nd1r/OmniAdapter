@@ -9,9 +9,14 @@ import android.graphics.drawable.StateListDrawable;
 import android.graphics.drawable.shapes.RoundRectShape;
 import android.os.Build;
 import android.support.annotation.ColorInt;
+import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.util.DisplayMetrics;
 import android.view.View;
+
+import com.faendir.omniadapter.model.ChangeInformation;
+import com.faendir.omniadapter.model.Component;
+import com.faendir.omniadapter.model.Composite;
 
 import org.apache.commons.lang3.event.EventListenerSupport;
 
@@ -112,11 +117,13 @@ final class Utils {
     }
 
 
+    @NonNull
     static <T> EventListenerSupport<T> createGenericEventListenerSupport(Class<? super T> listener) {
         //noinspection unchecked
         return (EventListenerSupport<T>) new EventListenerSupport<>(listener);
     }
 
+    @NonNull
     static <T> EventListenerSupport<T> createGenericEventListenerSupport(Class<? super T> listener, List<? extends T> listeners) {
         EventListenerSupport<T> support = createGenericEventListenerSupport(listener);
         for (T l : listeners) {
@@ -125,6 +132,7 @@ final class Utils {
         return support;
     }
 
+    @NonNull
     static <T extends Component> Collection<ChangeInformation<T>> compileChanges(List<ChangeInformation<T>> changes) {
         Collections.sort(changes);
         Map<T, ChangeInformation<T>> map = new HashMap<>();
@@ -132,22 +140,24 @@ final class Utils {
             T component = change.getComponent();
             if (map.containsKey(component)) {
                 ChangeInformation<T> prevChange = map.get(component);
-                switch (change.getType()) {
-                    case REMOVE:
-                        if (prevChange.getType() == ChangeInformation.Type.ADD) {
-                            map.remove(component);
-                        } else {
-                            map.put(component, ChangeInformation.removeInfo(component, prevChange.getFormerParent(), prevChange.getFormerPosition()));
-                        }
-                        break;
-                    case ADD:
-                    case MOVE:
-                        if (prevChange.getType() == ChangeInformation.Type.ADD) {
-                            map.put(component, ChangeInformation.addInfo(component, change.getNewParent()));
-                        } else {
-                            map.put(component, ChangeInformation.moveInfo(component, prevChange.getFormerParent(), prevChange.getFormerPosition(), change.getNewParent()));
-                        }
-                        break;
+                if(change instanceof ChangeInformation.Remove){
+                    if (prevChange instanceof ChangeInformation.IRemove) {
+                        //noinspection unchecked (type of change always equals the type of the interface)
+                        ChangeInformation.IRemove<T> remove = (ChangeInformation.IRemove<T>) prevChange;
+                        map.put(component, new ChangeInformation.Remove<>(component, remove.getFormerParent(), remove.getFormerPosition()));
+                    } else {
+                        map.remove(component);
+                    }
+                }else if(change instanceof ChangeInformation.IAdd){
+                    //noinspection unchecked (type of change always equals the type of the interface)
+                    ChangeInformation.IAdd<T> iAdd = (ChangeInformation.IAdd<T>) change;
+                    if (prevChange instanceof ChangeInformation.IRemove) {
+                        //noinspection unchecked (type of change always equals the type of the interface)
+                        ChangeInformation.IRemove<T> remove = (ChangeInformation.IRemove<T>) prevChange;
+                        map.put(component, new ChangeInformation.Move<>(component, remove.getFormerParent(), remove.getFormerPosition(), iAdd.getNewParent()));
+                    }else if (prevChange instanceof ChangeInformation.Add){
+                        map.put(component, new ChangeInformation.Add<>(component, iAdd.getNewParent()));
+                    }
                 }
             } else {
                 map.put(component, change);

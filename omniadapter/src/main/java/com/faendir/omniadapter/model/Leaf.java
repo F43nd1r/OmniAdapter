@@ -1,4 +1,4 @@
-package com.faendir.omniadapter;
+package com.faendir.omniadapter.model;
 
 import android.support.annotation.NonNull;
 

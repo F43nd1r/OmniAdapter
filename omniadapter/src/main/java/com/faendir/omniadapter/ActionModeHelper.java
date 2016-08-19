@@ -5,6 +5,8 @@ import android.support.v7.view.ActionMode;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import com.faendir.omniadapter.model.Component;
+
 import java.util.List;
 
 /**

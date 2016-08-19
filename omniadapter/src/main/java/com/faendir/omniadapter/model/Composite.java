@@ -1,6 +1,8 @@
-package com.faendir.omniadapter;
+package com.faendir.omniadapter.model;
 
 import android.support.annotation.NonNull;
+
+import com.faendir.omniadapter.DeepObservableList;
 
 import java.util.UUID;
 

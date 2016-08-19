@@ -1,4 +1,4 @@
-package com.faendir.omniadapter;
+package com.faendir.omniadapter.model;
 
 /**
  * Created on 09.08.2016.

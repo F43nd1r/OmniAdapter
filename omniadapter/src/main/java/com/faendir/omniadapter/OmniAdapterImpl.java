@@ -13,12 +13,20 @@ import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.faendir.omniadapter.model.ChangeInformation;
+import com.faendir.omniadapter.model.Component;
+import com.faendir.omniadapter.model.Composite;
+import com.faendir.omniadapter.model.SelectionMode;
+
 import org.apache.commons.lang3.event.EventListenerSupport;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+
+import static com.faendir.omniadapter.Action.MOVE;
+import static com.faendir.omniadapter.Action.REMOVE;
 
 /**
  * Created on 07.08.2016.
@@ -233,7 +241,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
                             case Action.EXPAND:
                                 actionSuccess = toggleExpansion(viewHolder.getComponent());
                                 break;
-                            case Action.REMOVE:
+                            case REMOVE:
                                 Utils.findParent(basis, component).remove(component);
                                 break;
                             case Action.DRAG:
@@ -342,27 +350,26 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
     public void onListChanged(List<ChangeInformation<T>> changeInfo) {
         if (!dragging) {
             if (!restoring) {
-                List<ChangeInformation<T>> additions = new ArrayList<>();
-                List<ChangeInformation<T>> removals = new ArrayList<>();
-                List<ChangeInformation<T>> moves = new ArrayList<>();
+                List<ChangeInformation.Add<T>> additions = new ArrayList<>();
+                List<ChangeInformation.Remove<T>> removals = new ArrayList<>();
+                List<ChangeInformation.Move<T>> moves = new ArrayList<>();
                 for (ChangeInformation<T> change : changeInfo) {
-                    switch (change.getType()) {
-                        case ADD:
-                            additions.add(change);
-                            break;
-                        case REMOVE:
-                            removals.add(change);
-                            break;
-                        case MOVE:
-                            moves.add(change);
-                            break;
+                    if (change instanceof ChangeInformation.Add) {
+                        additions.add((ChangeInformation.Add<T>) change);
+
+                    } else if (change instanceof ChangeInformation.Remove) {
+                        removals.add((ChangeInformation.Remove<T>) change);
+
+                    } else if (change instanceof ChangeInformation.Move) {
+                        moves.add((ChangeInformation.Move<T>) change);
+
                     }
                 }
-                final boolean remove = undoActions.get(Action.REMOVE) != null && !removals.isEmpty() && additions.isEmpty();
-                final boolean move = undoActions.get(Action.MOVE) != null && removals.isEmpty() && additions.isEmpty() && !moves.isEmpty();
+                final boolean remove = undoActions.get(REMOVE) != null && !removals.isEmpty() && additions.isEmpty();
+                final boolean move = undoActions.get(MOVE) != null && removals.isEmpty() && additions.isEmpty() && !moves.isEmpty();
                 if (remove || move) {
-                    SnackbarListener listener = new SnackbarListener(remove ? removals : moves, !remove);
-                    activeSnackbar = Snackbar.make(recyclerView, undoActions.get(remove ? Action.REMOVE : Action.MOVE), Snackbar.LENGTH_INDEFINITE)
+                    SnackbarListener listener = new SnackbarListener(remove ? removals : moves);
+                    activeSnackbar = Snackbar.make(recyclerView, undoActions.get(remove ? REMOVE : MOVE), Snackbar.LENGTH_INDEFINITE)
                             .setAction(undo, listener).setCallback(listener);
                     activeSnackbar.show();
                 }
@@ -504,7 +511,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         @Override
         public void onSwiped(ComponentViewHolder<T> holder, int direction) {
             Action.BaseAction action = direction == ItemTouchHelper.LEFT ? swipeToLeft : swipeToRight;
-            if (action.resolve(holder.getComponent(), holder.getLevel()) != Action.REMOVE) {
+            if (action.resolve(holder.getComponent(), holder.getLevel()) != REMOVE) {
                 notifyItemUpdated(holder.getComponent());
             }
             if (controller.shouldSwipe(holder.getComponent(), direction)) {
@@ -514,25 +521,29 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
     }
 
     private class SnackbarListener extends Snackbar.Callback implements View.OnClickListener {
-        private final List<ChangeInformation<T>> changes;
-        private final boolean isMove;
+        private final List<? extends ChangeInformation<T>> changes;
         private boolean reverted;
 
-        private SnackbarListener(List<ChangeInformation<T>> changes, boolean isMove) {
+        private SnackbarListener(List<? extends ChangeInformation<T>> changes) {
             this.changes = changes;
-            this.isMove = isMove;
             reverted = false;
         }
+
 
         @Override
         public void onClick(View view) {
             restoring = true;
             basis.beginBatchedUpdates();
-            for (ChangeInformation<T> change : changes) {
-                if (isMove) {
-                    change.getNewParent().remove(change.getComponent());
+            for (ChangeInformation<? extends T> change : changes) {
+                if (change instanceof ChangeInformation.IAdd) {
+                    //noinspection unchecked (type of change always equals the type of the interface)
+                    ((ChangeInformation.IAdd<T>) change).getNewParent().remove(change.getComponent());
                 }
-                change.getFormerParent().add(change.getFormerPosition(), change.getComponent());
+                if (change instanceof ChangeInformation.IRemove) {
+                    //noinspection unchecked (type of change always equals the type of the interface)
+                    ChangeInformation.IRemove<T> remove = (ChangeInformation.IRemove<T>) change;
+                    remove.getFormerParent().add(remove.getFormerPosition(), change.getComponent());
+                }
             }
             basis.endBatchedUpdates();
             restoring = false;

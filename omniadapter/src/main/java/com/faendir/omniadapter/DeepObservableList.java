@@ -4,6 +4,10 @@ import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.NonNull;
 
+import com.faendir.omniadapter.model.ChangeInformation;
+import com.faendir.omniadapter.model.Component;
+import com.faendir.omniadapter.model.Composite;
+
 import org.apache.commons.lang3.event.EventListenerSupport;
 
 import java.util.ArrayList;
@@ -167,7 +171,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
                 //noinspection unchecked
                 ((Composite<T>) component).getChildren().removeListener(childListener);
             }
-            changeInfos.add(ChangeInformation.removeInfo(component, this, indexOf(component)));
+            changeInfos.add(new ChangeInformation.Remove<>(component, this, indexOf(component)));
         }
     }
 
@@ -182,7 +186,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
             //noinspection unchecked
             ((Composite<T>) component).getChildren().addListener(childListener);
         }
-        changeInfos.add(ChangeInformation.addInfo(component, this));
+        changeInfos.add(new ChangeInformation.Add<>(component, this));
     }
 
     @Override

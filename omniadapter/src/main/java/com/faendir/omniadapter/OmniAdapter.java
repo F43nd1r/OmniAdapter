@@ -5,6 +5,9 @@ import android.support.annotation.NonNull;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.faendir.omniadapter.model.ChangeInformation;
+import com.faendir.omniadapter.model.Component;
+
 import java.util.Collection;
 import java.util.List;
 
@@ -89,8 +92,8 @@ public interface OmniAdapter<T extends Component> {
     }
 
     interface UndoListener<T extends Component> {
-        void onActionPersisted(List<ChangeInformation<T>> changes);
+        void onActionPersisted(List<? extends ChangeInformation<T>> changes);
 
-        void onActionReverted(List<ChangeInformation<T>> changes);
+        void onActionReverted(List<? extends ChangeInformation<T>> changes);
     }
 }

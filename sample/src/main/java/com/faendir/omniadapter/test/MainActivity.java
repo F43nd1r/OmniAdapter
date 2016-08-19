@@ -9,11 +9,11 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.faendir.omniadapter.Action;
-import com.faendir.omniadapter.Component;
+import com.faendir.omniadapter.model.Component;
 import com.faendir.omniadapter.DeepObservableList;
 import com.faendir.omniadapter.OmniAdapter;
 import com.faendir.omniadapter.OmniBuilder;
-import com.faendir.omniadapter.SelectionMode;
+import com.faendir.omniadapter.model.SelectionMode;
 
 import java.util.List;
 
@@ -67,7 +67,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         counter++;
     }
 
-    public static class Leaf extends com.faendir.omniadapter.Leaf {
+    public static class Leaf extends com.faendir.omniadapter.model.Leaf {
         private final String name;
 
         private Leaf(String name) {
@@ -80,7 +80,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    public static class Composite extends com.faendir.omniadapter.Composite<Component> {
+    public static class Composite extends com.faendir.omniadapter.model.Composite<Component> {
         private final String name;
 
         private Composite(String name) {
