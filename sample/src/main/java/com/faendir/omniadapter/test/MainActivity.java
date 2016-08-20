@@ -64,6 +64,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 addTo.add(new Composite("composite" + counter));
                 break;
         }
+        if(selection.get(0) instanceof Composite){
+            ((Composite) selection.get(0)).getState().setExpanded(true);
+        }
         counter++;
     }
 
