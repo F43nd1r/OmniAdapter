@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 
 import com.faendir.omniadapter.model.ChangeInformation;
 import com.faendir.omniadapter.model.Component;
+import com.faendir.omniadapter.model.Composite;
 import com.faendir.omniadapter.model.DeepObservableList;
 
 import java.util.Collection;
@@ -26,6 +27,9 @@ public interface OmniAdapter<T extends Component> {
     @NonNull
     List<T> getSelectionByLevel(@IntRange(from = 0) int level);
 
+    @NonNull
+    <E extends T> List<E> getSelectionByType(Class<E> type);
+
     void notifyItemUpdated(T component);
 
     void notifyItemsUpdated(T... components);
@@ -42,6 +46,9 @@ public interface OmniAdapter<T extends Component> {
 
     @NonNull
     List<T> getVisibleByParent(T parent);
+
+    @NonNull
+    <E extends T> List<E> getVisibleByType(Class<E> type);
 
     int getVisibleCount();
 
@@ -60,8 +67,6 @@ public interface OmniAdapter<T extends Component> {
 
         void bindView(View view, T component, int level);
 
-        boolean isExpandable(T component);
-
         boolean shouldMove(T component, DeepObservableList from, int fromPosition, DeepObservableList to, int toPosition);
 
         boolean isSelectable(T component);
@@ -69,12 +74,11 @@ public interface OmniAdapter<T extends Component> {
         boolean shouldSwipe(T component, int direction);
     }
 
-    abstract class BaseController<T extends Component> implements Controller<T> {
+    interface ExpandableController<T0 extends Composite<? extends T1>, T1 extends Component> extends Controller<T1> {
+        boolean isExpandable(T0 component);
+    }
 
-        @Override
-        public boolean isExpandable(T component) {
-            return true;
-        }
+    abstract class BaseController<T extends Component> implements Controller<T> {
 
         @Override
         public boolean shouldMove(T component, DeepObservableList from, int fromPosition, DeepObservableList to, int toPosition) {
@@ -88,6 +92,14 @@ public interface OmniAdapter<T extends Component> {
 
         @Override
         public boolean shouldSwipe(T component, int direction) {
+            return true;
+        }
+    }
+
+    abstract class BaseExpandableController<T0 extends Composite<? extends T1>, T1 extends Component> extends BaseController<T1> implements ExpandableController<T0, T1> {
+
+        @Override
+        public boolean isExpandable(T0 component) {
             return true;
         }
     }

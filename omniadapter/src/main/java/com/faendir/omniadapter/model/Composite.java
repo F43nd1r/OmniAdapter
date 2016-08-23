@@ -7,8 +7,6 @@ import android.support.annotation.NonNull;
  * @since 23.08.2016
  */
 public interface Composite<T extends Component> extends Component {
-    @Override
-    int getId();
 
     @NonNull
     @Override
@@ -29,8 +27,8 @@ public interface Composite<T extends Component> extends Component {
         public void setExpanded(boolean expanded) {
             boolean old = this.expanded;
             this.expanded = expanded;
-            if(old != expanded && getListener() != null && getListener() instanceof SimpleComposite.ExpandableState.Listener){
-                ((SimpleComposite.ExpandableState.Listener) getListener()).onExpansionToggled(expanded);
+            if(old != expanded && getListener() != null && getListener() instanceof Composite.ExpandableState.Listener){
+                ((Composite.ExpandableState.Listener) getListener()).onExpansionToggled(expanded);
             }
         }
         public interface Listener extends Component.State.Listener{

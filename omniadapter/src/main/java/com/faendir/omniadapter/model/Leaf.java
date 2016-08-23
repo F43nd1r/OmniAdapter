@@ -35,11 +35,6 @@ public abstract class Leaf implements Component {
         return uuid.hashCode();
     }
 
-    @Override
-    public int getId() {
-        return hashCode();
-    }
-
     @NonNull
     @Override
     public State getState() {

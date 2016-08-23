@@ -19,7 +19,6 @@ import com.faendir.omniadapter.model.ChangeInformation;
 import com.faendir.omniadapter.model.Component;
 import com.faendir.omniadapter.model.Composite;
 import com.faendir.omniadapter.model.DeepObservableList;
-import com.faendir.omniadapter.model.SimpleComposite;
 
 import org.apache.commons.lang3.event.EventListenerSupport;
 
@@ -76,7 +75,7 @@ public final class Utils {
         for (Component c : search) {
             if (c.equals(component)) {
                 return 0;
-            } else if (c instanceof SimpleComposite) {
+            } else if (c instanceof Composite) {
                 int level = findLevel(((Composite<? extends Component>) c).getChildren(), component);
                 if (level != -1) return level + 1;
             }
@@ -89,20 +88,20 @@ public final class Utils {
             if (c.equals(component)) {
                 //noinspection unchecked
                 return (DeepObservableList<T>) search;
-            } else if (c instanceof SimpleComposite) {
+            } else if (c instanceof Composite) {
                 //noinspection unchecked
                 DeepObservableList<T> list = findParent(((Composite<T>) c).getChildren(), component);
                 if (!list.isEmpty()) return list;
             }
         }
-        return new DeepObservableList<>();
+        return new DeepObservableList<>(type);
     }
 
     public static <T extends Component> void expandUntilLevel(DeepObservableList<T> list, final OmniAdapter.Controller<T> controller, final int expandUntilLevel) {
         list.visitDeep(new DeepObservableList.ComponentVisitor<T>() {
             @Override
             public void visit(T component, int level) {
-                if (level <= expandUntilLevel && component instanceof SimpleComposite && controller.isExpandable(component)) {
+                if (level <= expandUntilLevel && checkIsExpandable(controller, component)) {
                     ((Composite) component).getState().setExpanded(true);
                 }
             }
@@ -122,7 +121,7 @@ public final class Utils {
 
     @NonNull
     public static <T> EventListenerSupport<T> createGenericEventListenerSupport(Class<? super T> listener) {
-        //noinspection unchecked
+        //noinspection unchecked (this can't already contain elements of a different type)
         return (EventListenerSupport<T>) new EventListenerSupport<>(listener);
     }
 
@@ -167,5 +166,12 @@ public final class Utils {
             }
         }
         return map.values();
+    }
+
+    public static <T extends Component> boolean checkIsExpandable(OmniAdapter.Controller<T> controller, T component){
+        //noinspection unchecked
+        return component instanceof Composite
+                && controller instanceof OmniAdapter.ExpandableController
+                && ((OmniAdapter.ExpandableController<Composite<? extends T>, T>) controller).isExpandable((Composite<? extends T>) component);
     }
 }

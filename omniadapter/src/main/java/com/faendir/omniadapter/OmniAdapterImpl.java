@@ -19,7 +19,6 @@ import com.faendir.omniadapter.model.Component;
 import com.faendir.omniadapter.model.Composite;
 import com.faendir.omniadapter.model.DeepObservableList;
 import com.faendir.omniadapter.model.SelectionMode;
-import com.faendir.omniadapter.model.SimpleComposite;
 import com.faendir.omniadapter.utils.TypedItemTouchHelperCallback;
 import com.faendir.omniadapter.utils.Utils;
 
@@ -70,7 +69,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
     @Nullable
     private Snackbar activeSnackbar;
 
-    OmniAdapterImpl(Context context, DeepObservableList<? extends T> basis, Controller<T> controller,
+    OmniAdapterImpl(Context context, DeepObservableList<T> basis, Controller<T> controller,
                     Action.Click click, Action.LongClick longClick, Action.Swipe swipeToLeft, Action.Swipe swipeToRight,
                     RecyclerView.LayoutManager layoutManager,
                     int highlightColor, int selectionColor, SelectionMode selectionMode,
@@ -94,8 +93,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         this.insetAsMargin = insetAsMargin;
         setHasStableIds(true);
         bufferedUpdate = false;
-        //noinspection unchecked
-        this.basis = (DeepObservableList<T>) basis;
+        this.basis = basis;
         this.controller = controller;
         dragChanges = new ArrayList<>();
         mainHandler = new Handler(context.getMainLooper());
@@ -136,7 +134,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
 
     @Override
     public long getItemId(int position) {
-        return visible.get(position).getId();
+        return visible.get(position).hashCode();
     }
 
     @Override
@@ -208,6 +206,21 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
             public void visit(T component, int level) {
                 if (l == level && component.getState().isSelected()) {
                     list.add(component);
+                }
+            }
+        });
+        return list;
+    }
+
+    @NonNull
+    @Override
+    public <E extends T> List<E> getSelectionByType(final Class<E> type) {
+        final List<E> list = new ArrayList<>();
+        basis.visitDeep(new DeepObservableList.ComponentVisitor<T>() {
+            @Override
+            public void visit(T component, int level) {
+                if (type.isAssignableFrom(component.getClass()) && component.getState().isSelected()) {
+                    list.add(type.cast(component));
                 }
             }
         });
@@ -333,7 +346,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
     }
 
     private boolean toggleExpansion(T component) {
-        if (component instanceof SimpleComposite && !((Composite) component).getChildren().isEmpty() && controller.isExpandable(component)) {
+        if (Utils.checkIsExpandable(controller, component)) {
             Composite.ExpandableState state = ((Composite) component).getState();
             state.setExpanded(!state.isExpanded());
             if (deselectChildrenOnCollapse && !state.isExpanded()) {
@@ -426,13 +439,25 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
     @Override
     public List<T> getVisibleByParent(T parent) {
         List<T> list = new ArrayList<>();
-        if (parent instanceof SimpleComposite)
+        if (parent instanceof Composite)
             //noinspection unchecked
             for (T component : ((Composite<T>) parent).getChildren()) {
                 if (visible.contains(component)) {
                     list.add(component);
                 }
             }
+        return list;
+    }
+
+    @NonNull
+    @Override
+    public <E extends T> List<E> getVisibleByType(Class<E> type) {
+        List<E> list = new ArrayList<>();
+        for (T component : visible) {
+            if (type.isAssignableFrom(component.getClass())) {
+                list.add(type.cast(component));
+            }
+        }
         return list;
     }
 
@@ -474,7 +499,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
             if (fromHolder.getLevel() == toHolder.getLevel()) {
                 toList = Utils.findParent(basis, to);
                 index = toList.indexOf(to);
-            } else if (fromHolder.getLevel() == toHolder.getLevel() + 1 && to instanceof SimpleComposite) {
+            } else if (fromHolder.getLevel() == toHolder.getLevel() + 1 && to instanceof Composite) {
                 //noinspection unchecked
                 toList = ((Composite<T>) to).getChildren();
                 if (!((Composite) to).getState().isExpanded()) toggleExpansion(to);

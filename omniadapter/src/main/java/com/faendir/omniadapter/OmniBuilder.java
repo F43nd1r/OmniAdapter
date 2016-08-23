@@ -29,7 +29,7 @@ public class OmniBuilder<T extends Component> {
     @NonNull
     private final Context context;
     @NonNull
-    private final DeepObservableList<? extends T> dataSource;
+    private final DeepObservableList<T> dataSource;
     @NonNull
     private final OmniAdapter.Controller<T> controller;
     @NonNull
@@ -61,7 +61,7 @@ public class OmniBuilder<T extends Component> {
     private int insetDpPerLevel;
     private boolean insetAsMargin;
 
-    public OmniBuilder(@NonNull Context context, @NonNull DeepObservableList<? extends T> dataSource, @NonNull OmniAdapter.Controller<T> controller) {
+    public OmniBuilder(@NonNull Context context, @NonNull DeepObservableList<T> dataSource, @NonNull OmniAdapter.Controller<T> controller) {
         this.context = context;
         this.dataSource = dataSource;
         this.controller = controller;

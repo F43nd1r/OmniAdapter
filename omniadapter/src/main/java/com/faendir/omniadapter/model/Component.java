@@ -9,7 +9,6 @@ import android.support.annotation.NonNull;
  */
 
 public interface Component {
-    int getId();
 
     @NonNull
     State getState();

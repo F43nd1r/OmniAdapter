@@ -28,7 +28,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recyclerView);
-        observableList = new DeepObservableList<>();
+        observableList = new DeepObservableList<>(Component.class);
         Composite composite = new Composite("composite");
         composite.getChildren().add(new Leaf("leaf"));
         observableList.add(composite);

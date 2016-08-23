@@ -92,7 +92,7 @@ public class Action {
         }
 
         public int resolve(Component component, int level) {
-            if (component instanceof SimpleComposite) {
+            if (component instanceof Composite) {
                 for (Map.Entry<Range<Integer>, Integer> entry : compositeActions.entrySet()) {
                     if (entry.getKey().contains(level)) {
                         return entry.getValue();

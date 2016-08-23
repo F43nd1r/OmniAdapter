@@ -15,10 +15,10 @@ public class SimpleComposite<T extends Component> implements Composite<T> {
     private final ExpandableState state;
     private final DeepObservableList<T> children;
 
-    public SimpleComposite() {
+    public SimpleComposite(Class<T> type) {
         uuid = UUID.randomUUID();
         state = new ExpandableState();
-        children = new DeepObservableList<>();
+        children = new DeepObservableList<>(type);
     }
 
     @Override
@@ -35,11 +35,6 @@ public class SimpleComposite<T extends Component> implements Composite<T> {
         SimpleComposite that = (SimpleComposite) o;
 
         return uuid.equals(that.uuid);
-    }
-
-    @Override
-    public int getId() {
-        return hashCode();
     }
 
     @NonNull
