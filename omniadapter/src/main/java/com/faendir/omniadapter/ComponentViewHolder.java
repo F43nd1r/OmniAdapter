@@ -8,6 +8,7 @@ import android.view.View;
 
 import com.faendir.omniadapter.model.Component;
 import com.faendir.omniadapter.model.Composite;
+import com.faendir.omniadapter.utils.Utils;
 
 /**
  * Created on 07.08.2016.
@@ -15,7 +16,7 @@ import com.faendir.omniadapter.model.Composite;
  * @author F43nd1r
  */
 
-class ComponentViewHolder<T extends Component> extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener, Composite.State.Listener {
+class ComponentViewHolder<T extends Component> extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener, Composite.ExpandableState.Listener {
     private final View view;
     private T component;
     @Nullable

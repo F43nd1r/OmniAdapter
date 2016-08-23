@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 
 import com.faendir.omniadapter.model.ChangeInformation;
 import com.faendir.omniadapter.model.Component;
+import com.faendir.omniadapter.model.DeepObservableList;
 
 import java.util.Collection;
 import java.util.List;

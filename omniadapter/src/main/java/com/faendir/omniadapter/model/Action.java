@@ -1,12 +1,9 @@
-package com.faendir.omniadapter;
+package com.faendir.omniadapter.model;
 
 import android.support.annotation.IntDef;
 import android.support.annotation.IntRange;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-
-import com.faendir.omniadapter.model.Component;
-import com.faendir.omniadapter.model.Composite;
 
 import org.apache.commons.lang3.Range;
 
@@ -55,7 +52,7 @@ public class Action {
     public @interface UndoableAction {
     }
 
-    static class BaseAction {
+    public static class BaseAction {
         @NonNull
         private final Listener listener;
         private final int defaultAction;
@@ -94,8 +91,8 @@ public class Action {
             return this;
         }
 
-        int resolve(Component component, int level) {
-            if (component instanceof Composite) {
+        public int resolve(Component component, int level) {
+            if (component instanceof SimpleComposite) {
                 for (Map.Entry<Range<Integer>, Integer> entry : compositeActions.entrySet()) {
                     if (entry.getKey().contains(level)) {
                         return entry.getValue();
@@ -114,7 +111,7 @@ public class Action {
         }
 
         @NonNull
-        Listener getListener() {
+        public Listener getListener() {
             return listener;
         }
 

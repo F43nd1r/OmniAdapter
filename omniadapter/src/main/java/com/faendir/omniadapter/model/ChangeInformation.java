@@ -2,8 +2,6 @@ package com.faendir.omniadapter.model;
 
 import android.support.annotation.NonNull;
 
-import com.faendir.omniadapter.DeepObservableList;
-
 /**
  * Created on 14.08.2016.
  *

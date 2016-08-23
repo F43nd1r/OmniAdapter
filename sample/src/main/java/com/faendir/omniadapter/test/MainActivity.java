@@ -8,12 +8,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.faendir.omniadapter.Action;
+import com.faendir.omniadapter.model.Action;
 import com.faendir.omniadapter.model.Component;
-import com.faendir.omniadapter.DeepObservableList;
+import com.faendir.omniadapter.model.DeepObservableList;
 import com.faendir.omniadapter.OmniAdapter;
 import com.faendir.omniadapter.OmniBuilder;
 import com.faendir.omniadapter.model.SelectionMode;
+import com.faendir.omniadapter.model.SimpleComposite;
 
 import java.util.List;
 
@@ -83,7 +84,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    public static class Composite extends com.faendir.omniadapter.model.Composite<Component> {
+    public static class Composite extends SimpleComposite<Component> {
         private final String name;
 
         private Composite(String name) {

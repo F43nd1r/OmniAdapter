@@ -1,4 +1,4 @@
-package com.faendir.omniadapter;
+package com.faendir.omniadapter.utils;
 
 import android.content.res.ColorStateList;
 import android.graphics.drawable.ColorDrawable;
@@ -14,9 +14,12 @@ import android.support.v7.widget.RecyclerView;
 import android.util.DisplayMetrics;
 import android.view.View;
 
+import com.faendir.omniadapter.OmniAdapter;
 import com.faendir.omniadapter.model.ChangeInformation;
 import com.faendir.omniadapter.model.Component;
 import com.faendir.omniadapter.model.Composite;
+import com.faendir.omniadapter.model.DeepObservableList;
+import com.faendir.omniadapter.model.SimpleComposite;
 
 import org.apache.commons.lang3.event.EventListenerSupport;
 
@@ -33,8 +36,8 @@ import java.util.Map;
  * @author F43nd1r
  */
 
-final class Utils {
-    static void setDrawable(View view, @ColorInt int highlightColor, @ColorInt int selectionColor) {
+public final class Utils {
+    public static void setDrawable(View view, @ColorInt int highlightColor, @ColorInt int selectionColor) {
         Drawable background;
         StateListDrawable drawable = new StateListDrawable();
         drawable.addState(new int[]{android.R.attr.state_activated}, new ColorDrawable(selectionColor));
@@ -57,7 +60,7 @@ final class Utils {
         view.setBackgroundDrawable(background);
     }
 
-    static void applyInset(View view, int insetDp, boolean asMargin) {
+    public static void applyInset(View view, int insetDp, boolean asMargin) {
         DisplayMetrics displayMetrics = view.getContext().getResources().getDisplayMetrics();
         int inset = Math.round(insetDp * displayMetrics.density);
         if (asMargin) {
@@ -69,11 +72,11 @@ final class Utils {
         }
     }
 
-    static int findLevel(DeepObservableList<? extends Component> search, Component component) {
+    public static int findLevel(DeepObservableList<? extends Component> search, Component component) {
         for (Component c : search) {
             if (c.equals(component)) {
                 return 0;
-            } else if (c instanceof Composite) {
+            } else if (c instanceof SimpleComposite) {
                 int level = findLevel(((Composite<? extends Component>) c).getChildren(), component);
                 if (level != -1) return level + 1;
             }
@@ -81,12 +84,12 @@ final class Utils {
         return -1;
     }
 
-    static <T extends Component> DeepObservableList<T> findParent(DeepObservableList<? extends T> search, T component) {
+    public static <T extends Component> DeepObservableList<T> findParent(DeepObservableList<? extends T> search, T component) {
         for (Component c : search) {
             if (c.equals(component)) {
                 //noinspection unchecked
                 return (DeepObservableList<T>) search;
-            } else if (c instanceof Composite) {
+            } else if (c instanceof SimpleComposite) {
                 //noinspection unchecked
                 DeepObservableList<T> list = findParent(((Composite<T>) c).getChildren(), component);
                 if (!list.isEmpty()) return list;
@@ -95,11 +98,11 @@ final class Utils {
         return new DeepObservableList<>();
     }
 
-    static <T extends Component> void expandUntilLevel(DeepObservableList<T> list, final OmniAdapter.Controller<T> controller, final int expandUntilLevel) {
+    public static <T extends Component> void expandUntilLevel(DeepObservableList<T> list, final OmniAdapter.Controller<T> controller, final int expandUntilLevel) {
         list.visitDeep(new DeepObservableList.ComponentVisitor<T>() {
             @Override
             public void visit(T component, int level) {
-                if (level <= expandUntilLevel && component instanceof Composite && controller.isExpandable(component)) {
+                if (level <= expandUntilLevel && component instanceof SimpleComposite && controller.isExpandable(component)) {
                     ((Composite) component).getState().setExpanded(true);
                 }
             }
@@ -107,7 +110,7 @@ final class Utils {
     }
 
 
-    static <T extends Component> void clearSelection(DeepObservableList<T> list) {
+    public static <T extends Component> void clearSelection(DeepObservableList<T> list) {
         list.visitDeep(new DeepObservableList.ComponentVisitor<T>() {
             @Override
             public void visit(T component, int level) {
@@ -118,13 +121,13 @@ final class Utils {
 
 
     @NonNull
-    static <T> EventListenerSupport<T> createGenericEventListenerSupport(Class<? super T> listener) {
+    public static <T> EventListenerSupport<T> createGenericEventListenerSupport(Class<? super T> listener) {
         //noinspection unchecked
         return (EventListenerSupport<T>) new EventListenerSupport<>(listener);
     }
 
     @NonNull
-    static <T> EventListenerSupport<T> createGenericEventListenerSupport(Class<? super T> listener, List<? extends T> listeners) {
+    public static <T> EventListenerSupport<T> createGenericEventListenerSupport(Class<? super T> listener, List<? extends T> listeners) {
         EventListenerSupport<T> support = createGenericEventListenerSupport(listener);
         for (T l : listeners) {
             support.addListener(l);
@@ -133,7 +136,7 @@ final class Utils {
     }
 
     @NonNull
-    static <T extends Component> Collection<ChangeInformation<T>> compileChanges(List<ChangeInformation<T>> changes) {
+    public static <T extends Component> Collection<ChangeInformation<T>> compileChanges(List<ChangeInformation<T>> changes) {
         Collections.sort(changes);
         Map<T, ChangeInformation<T>> map = new HashMap<>();
         for (ChangeInformation<T> change : changes) {

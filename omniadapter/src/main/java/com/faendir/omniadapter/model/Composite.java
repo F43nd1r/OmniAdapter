@@ -2,61 +2,23 @@ package com.faendir.omniadapter.model;
 
 import android.support.annotation.NonNull;
 
-import com.faendir.omniadapter.DeepObservableList;
-
-import java.util.UUID;
-
 /**
- * Created on 07.08.2016.
- *
  * @author F43nd1r
+ * @since 23.08.2016
  */
-
-public class Composite<T extends Component> implements Component {
-    private final UUID uuid;
-    private final State state;
-    private final DeepObservableList<T> children;
-
-    public Composite() {
-        uuid = UUID.randomUUID();
-        state = new State();
-        children = new DeepObservableList<>();
-    }
-
+public interface Composite<T extends Component> extends Component {
     @Override
-    public int hashCode() {
-        return uuid.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        if (!super.equals(o)) return false;
-
-        Composite that = (Composite) o;
-
-        return uuid.equals(that.uuid);
-    }
-
-    @Override
-    public int getId() {
-        return hashCode();
-    }
+    int getId();
 
     @NonNull
     @Override
-    public State getState() {
-        return state;
-    }
+    ExpandableState getState();
 
-    public final DeepObservableList<T> getChildren(){
-        return children;
-    }
+    DeepObservableList<T> getChildren();
 
-    public static class State extends Component.State{
+    class ExpandableState extends Component.State{
         private boolean expanded;
-        public State(){
+        public ExpandableState(){
             expanded = false;
         }
 
@@ -67,8 +29,8 @@ public class Composite<T extends Component> implements Component {
         public void setExpanded(boolean expanded) {
             boolean old = this.expanded;
             this.expanded = expanded;
-            if(old != expanded && getListener() != null && getListener() instanceof Listener){
-                ((Listener) getListener()).onExpansionToggled(expanded);
+            if(old != expanded && getListener() != null && getListener() instanceof SimpleComposite.ExpandableState.Listener){
+                ((SimpleComposite.ExpandableState.Listener) getListener()).onExpansionToggled(expanded);
             }
         }
         public interface Listener extends Component.State.Listener{

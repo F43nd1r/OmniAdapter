@@ -1,13 +1,11 @@
-package com.faendir.omniadapter;
+package com.faendir.omniadapter.model;
 
 import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
-import com.faendir.omniadapter.model.ChangeInformation;
-import com.faendir.omniadapter.model.Component;
-import com.faendir.omniadapter.model.Composite;
+import com.faendir.omniadapter.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -89,7 +87,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
     private void visitDeep(ComponentVisitor<T> visitor, int level) {
         for (T component : this) {
             visitor.visit(component, level);
-            if (component instanceof Composite && ((Composite) component).getState().isExpanded()) {
+            if (component instanceof SimpleComposite && ((Composite) component).getState().isExpanded()) {
                 //noinspection unchecked
                 (((Composite<T>) component).getChildren()).visitDeep(visitor, level + 1);
             }
@@ -99,7 +97,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
     public void beginBatchedUpdates() {
         batchCount++;
         for (T component : this) {
-            if (component instanceof Composite) {
+            if (component instanceof SimpleComposite) {
                 //noinspection unchecked
                 ((Composite<T>) component).getChildren().beginBatchedUpdates();
             }
@@ -115,7 +113,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
     private void $endBatchedUpdates() {
         if (batchCount > 0) {
             for (T component : this) {
-                if (component instanceof Composite) {
+                if (component instanceof SimpleComposite) {
                     //noinspection unchecked
                     ((Composite<T>) component).getChildren().endBatchedUpdates();
                 }
@@ -124,13 +122,13 @@ public class DeepObservableList<T extends Component> implements List<T> {
         }
     }
 
-    List<T> flatView() {
+    public List<T> flatView() {
         List<T> list = new ArrayList<>();
         for (T component : this) {
             if (filter.accept(component)) {
                 list.add(component);
             }
-            if (component instanceof Composite && ((Composite) component).getState().isExpanded()) {
+            if (component instanceof SimpleComposite && ((Composite) component).getState().isExpanded()) {
                 //noinspection unchecked
                 list.addAll(((Composite<T>) component).getChildren().flatView());
             }
@@ -188,7 +186,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
 
     private void beforeRemove(T component) {
         if (contains(component)) {
-            if (component instanceof Composite) {
+            if (component instanceof SimpleComposite) {
                 //noinspection unchecked
                 ((Composite<T>) component).getChildren().removeListener(childListener);
             }
@@ -203,7 +201,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
     }
 
     private void afterAdd(T component) {
-        if (component instanceof Composite) {
+        if (component instanceof SimpleComposite) {
             //noinspection unchecked
             ((Composite<T>) component).getChildren().addListener(childListener);
         }

@@ -11,7 +11,9 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.SparseArray;
 
+import com.faendir.omniadapter.model.Action;
 import com.faendir.omniadapter.model.Component;
+import com.faendir.omniadapter.model.DeepObservableList;
 import com.faendir.omniadapter.model.SelectionMode;
 
 import java.util.ArrayList;

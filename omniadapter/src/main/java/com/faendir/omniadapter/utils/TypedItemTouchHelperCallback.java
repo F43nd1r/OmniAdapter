@@ -1,4 +1,4 @@
-package com.faendir.omniadapter;
+package com.faendir.omniadapter.utils;
 
 import android.graphics.Canvas;
 import android.support.v7.widget.RecyclerView;
@@ -14,10 +14,10 @@ import java.util.List;
  * @author F43nd1r
  */
 @SuppressWarnings({"unchecked", "WeakerAccess"})
-abstract class TypedItemTouchHelperCallback<T extends RecyclerView.ViewHolder> {
+public abstract class TypedItemTouchHelperCallback<T extends RecyclerView.ViewHolder> {
     private final Wrapper<T> wrapper;
 
-    TypedItemTouchHelperCallback() {
+    public TypedItemTouchHelperCallback() {
         wrapper = new Wrapper<>(this);
     }
 
@@ -113,7 +113,7 @@ abstract class TypedItemTouchHelperCallback<T extends RecyclerView.ViewHolder> {
         return wrapper.$interpolateOutOfBoundsScroll(recyclerView, viewSize, viewSizeOutOfBounds, totalSize, msSinceStartScroll);
     }
 
-    ItemTouchHelper.Callback asCallback(){
+    public ItemTouchHelper.Callback asCallback(){
         return wrapper;
     }
 

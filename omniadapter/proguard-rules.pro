@@ -16,4 +16,5 @@
 #   public *;
 #}
 -keep class * extends com.faendir.omniadapter.model.Component {*;}
--keep class * extends com.faendir.omniadapter.model.Component.State {*;}
+-keep interface * extends com.faendir.omniadapter.model.Component {*;}
+-keep class * extends com.faendir.omniadapter.model.Component$State {*;}

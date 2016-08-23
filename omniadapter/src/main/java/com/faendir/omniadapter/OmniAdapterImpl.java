@@ -13,10 +13,15 @@ import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.faendir.omniadapter.model.Action;
 import com.faendir.omniadapter.model.ChangeInformation;
 import com.faendir.omniadapter.model.Component;
 import com.faendir.omniadapter.model.Composite;
+import com.faendir.omniadapter.model.DeepObservableList;
 import com.faendir.omniadapter.model.SelectionMode;
+import com.faendir.omniadapter.model.SimpleComposite;
+import com.faendir.omniadapter.utils.TypedItemTouchHelperCallback;
+import com.faendir.omniadapter.utils.Utils;
 
 import org.apache.commons.lang3.event.EventListenerSupport;
 
@@ -25,8 +30,8 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
-import static com.faendir.omniadapter.Action.MOVE;
-import static com.faendir.omniadapter.Action.REMOVE;
+import static com.faendir.omniadapter.model.Action.MOVE;
+import static com.faendir.omniadapter.model.Action.REMOVE;
 
 /**
  * Created on 07.08.2016.
@@ -328,8 +333,8 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
     }
 
     private boolean toggleExpansion(T component) {
-        if (component instanceof Composite && !((Composite) component).getChildren().isEmpty() && controller.isExpandable(component)) {
-            Composite.State state = ((Composite) component).getState();
+        if (component instanceof SimpleComposite && !((Composite) component).getChildren().isEmpty() && controller.isExpandable(component)) {
+            Composite.ExpandableState state = ((Composite) component).getState();
             state.setExpanded(!state.isExpanded());
             if (deselectChildrenOnCollapse && !state.isExpanded()) {
                 Utils.clearSelection(((Composite) component).getChildren());
@@ -421,7 +426,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
     @Override
     public List<T> getVisibleByParent(T parent) {
         List<T> list = new ArrayList<>();
-        if (parent instanceof Composite)
+        if (parent instanceof SimpleComposite)
             //noinspection unchecked
             for (T component : ((Composite<T>) parent).getChildren()) {
                 if (visible.contains(component)) {
@@ -469,7 +474,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
             if (fromHolder.getLevel() == toHolder.getLevel()) {
                 toList = Utils.findParent(basis, to);
                 index = toList.indexOf(to);
-            } else if (fromHolder.getLevel() == toHolder.getLevel() + 1 && to instanceof Composite) {
+            } else if (fromHolder.getLevel() == toHolder.getLevel() + 1 && to instanceof SimpleComposite) {
                 //noinspection unchecked
                 toList = ((Composite<T>) to).getChildren();
                 if (!((Composite) to).getState().isExpanded()) toggleExpansion(to);
