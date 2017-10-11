@@ -162,8 +162,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
         }
     }
 
-    @Override
-    public void onAttachedToRecyclerView(RecyclerView recyclerView) {
+    void attach(RecyclerView recyclerView) {
         this.recyclerView = recyclerView;
         super.onAttachedToRecyclerView(recyclerView);
         recyclerView.setLayoutManager(layoutManager);
@@ -193,7 +192,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
                     list.add(component);
                 }
             }
-        });
+        }, true);
         return list;
     }
 
@@ -208,7 +207,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
                     list.add(component);
                 }
             }
-        });
+        }, true);
         return list;
     }
 
@@ -223,7 +222,7 @@ class OmniAdapterImpl<T extends Component> extends RecyclerView.Adapter<Componen
                     list.add(type.cast(component));
                 }
             }
-        });
+        }, true);
         return list;
     }
 

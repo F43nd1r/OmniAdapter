@@ -14,9 +14,9 @@ ext {
     gitUrl = 'https://github.com/F43nd1r/OmniAdapter.git'
 
     libraryVersion = "0.3-SNAPSHOT"
-    versionCode = 2
+    versionCode = 3
     sdkVersion = 24
-    supportVersion = "24.2.0"
+    supportVersion = "24.2.1"
 
     developerId = 'f43nd1r'
     developerName = 'Lukas Morawietz'
@@ -29,7 +29,7 @@ ext {
 
 android {
     compileSdkVersion 24
-    buildToolsVersion "24.0.0"
+    buildToolsVersion '26.0.2'
 
     defaultConfig {
         minSdkVersion 11
@@ -45,7 +45,7 @@ dependencies {
     compile "com.android.support:recyclerview-v7:$supportVersion"
     compile "com.android.support:design:$supportVersion"
     compile 'org.apache.commons:commons-collections4:4.1'
-    compile 'org.apache.commons:commons-lang3:3.4'
+    compile 'org.apache.commons:commons-lang3:3.6'
 }
 
 apply from: 'install.gradle'

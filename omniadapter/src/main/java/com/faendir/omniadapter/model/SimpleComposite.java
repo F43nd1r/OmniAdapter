@@ -44,7 +44,7 @@ public class SimpleComposite<T extends Component> implements Composite<T> {
     }
 
     @Override
-    public final DeepObservableList<T> getChildren(){
+    public DeepObservableList<T> getChildren(){
         return children;
     }
 

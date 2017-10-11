@@ -65,7 +65,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 addTo.add(new Composite("composite" + counter));
                 break;
         }
-        if(selection.get(0) instanceof Composite){
+        if(!selection.isEmpty() && selection.get(0) instanceof Composite){
             ((Composite) selection.get(0)).getState().setExpanded(true);
         }
         counter++;
@@ -88,6 +88,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         private final String name;
 
         private Composite(String name) {
+            super(Component.class);
             this.name = name;
         }
 

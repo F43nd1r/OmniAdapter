@@ -9,6 +9,8 @@ import com.faendir.omniadapter.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -16,9 +18,9 @@ import java.util.ListIterator;
 /**
  * A collection which notifies listeners of deep changes
  *
+ * @param <T> Type of all items in this list (including sublists)
  * @author F43nd1r
  * @since 8.8.2016
- * @param <T> Type of all items in this list (including sublists)
  */
 public class DeepObservableList<T extends Component> implements List<T> {
 
@@ -30,7 +32,10 @@ public class DeepObservableList<T extends Component> implements List<T> {
      * @param <T>  the type of the resulting list
      * @return a new DeepObservableList with the content of the collection
      */
-    public static <T extends Component> DeepObservableList<T> copyOf(Class<T> type, @NonNull Collection<? extends T> c) {
+    public static <T extends Component> DeepObservableList<T> copyOf(@NonNull Class<T> type, @Nullable Collection<? extends T> c) {
+        if(c == null){
+            return new DeepObservableList<>(type);
+        }
         return new DeepObservableList<>(type, c);
     }
 
@@ -43,19 +48,20 @@ public class DeepObservableList<T extends Component> implements List<T> {
      * @param <T>  type of the resulting list
      * @return a new DeepObservableList wrapping this list
      */
-    public static <T extends Component> DeepObservableList<T> wrap(Class<T> type, @NonNull List<T> list) {
+    public static <T extends Component> DeepObservableList<T> wrap(@NonNull Class<T> type, @NonNull List<T> list) {
         return new DeepObservableList<>(type, list);
     }
 
     private final List<T> delegate;
     private final Class<T> type;
-    private transient final List<Listener<? super T>> listeners = new ArrayList<>();
+    private transient final List<Listener<T>> listeners = new ArrayList<>();
     private transient final ChildListener childListener = new ChildListener();
     private transient final List<ChangeInformation<T>> changeInfos = new ArrayList<>();
     private transient final Handler handler = new Handler(Looper.getMainLooper());
     private transient volatile boolean posted = false;
     private transient volatile int batchCount = 0;
     private transient VisibleFilter filter = null;
+    private transient Comparator<T> ordering = null;
 
     public DeepObservableList(Class<T> type) {
         this.type = type;
@@ -63,10 +69,11 @@ public class DeepObservableList<T extends Component> implements List<T> {
     }
 
     private DeepObservableList(Class<T> type, @NonNull Collection<? extends T> c) {
+        this.type = type;
         check(c);
         delegate = new ArrayList<>(c);
-        this.type = type;
         afterAdd(c);
+        listChanged();
     }
 
     private DeepObservableList(Class<T> type, @NonNull List<T> list) {
@@ -75,28 +82,34 @@ public class DeepObservableList<T extends Component> implements List<T> {
         afterAdd(list);
     }
 
-    public void addListener(@NonNull Listener<? super T> listener) {
+    public void addListener(@NonNull Listener<T> listener) {
         listeners.add(listener);
     }
 
-    public void removeListener(@NonNull Listener<? super T> listener) {
+    public void removeListener(@NonNull Listener<T> listener) {
         listeners.remove(listener);
     }
 
-    public void setFilter(@NonNull VisibleFilter filter) {
+    public synchronized void setFilter(@NonNull VisibleFilter filter) {
         this.filter = filter;
+        for (T t : this) {
+            if (t instanceof Composite) {
+                ((Composite) t).getChildren().setFilter(filter);
+            }
+        }
+        listChanged();
     }
 
-    public void visitDeep(@NonNull ComponentVisitor<T> visitor) {
-        visitDeep(visitor, 0);
+    public void visitDeep(@NonNull ComponentVisitor<T> visitor, boolean ignoreCollapsed) {
+        visitDeep(visitor, ignoreCollapsed, 0);
     }
 
-    private void visitDeep(ComponentVisitor<T> visitor, int level) {
+    private void visitDeep(ComponentVisitor<T> visitor, boolean ignoreCollapsed, int level) {
         for (T component : this) {
             visitor.visit(component, level);
-            if (component instanceof Composite && ((Composite) component).getState().isExpanded()) {
+            if (component instanceof Composite && (!ignoreCollapsed || ((Composite) component).getState().isExpanded())) {
                 //noinspection unchecked
-                (((Composite<T>) component).getChildren()).visitDeep(visitor, level + 1);
+                (((Composite<T>) component).getChildren()).visitDeep(visitor, ignoreCollapsed, level + 1);
             }
         }
     }
@@ -141,6 +154,17 @@ public class DeepObservableList<T extends Component> implements List<T> {
         return list;
     }
 
+    public synchronized void keepSorted(Comparator<T> comparator) {
+        ordering = comparator;
+        for (T t : this) {
+            if (t instanceof Composite) {
+                //noinspection unchecked
+                ((Composite<T>) t).getChildren().keepSorted(comparator);
+            }
+        }
+        listChanged();
+    }
+
     private void listChanged() {
         listChanged(false);
     }
@@ -149,12 +173,12 @@ public class DeepObservableList<T extends Component> implements List<T> {
     private void listChanged(boolean direct) {
         if (batchCount == 0) {
             if (direct) {
-                notifyListeners(null);
+                $listChanged();
             } else if (!posted) {
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        notifyListeners(null);
+                        $listChanged();
                         posted = false;
                     }
                 });
@@ -163,16 +187,25 @@ public class DeepObservableList<T extends Component> implements List<T> {
         }
     }
 
+    private synchronized void $listChanged() {
+        if (ordering != null) {
+            beginBatchedUpdates();
+            Collections.sort(this, ordering);
+            $endBatchedUpdates();
+        }
+        notifyListeners(null);
+    }
+
     private void notifyListeners(@Nullable Listener<? super T> until) {
         ArrayList<ChangeInformation<T>> changes = new ArrayList<>(Utils.compileChanges(changeInfos));
         changeInfos.clear();
         if (!changes.isEmpty()) {
-            for (Listener<? super T> listener : listeners) {
+            for (Listener<T> listener : listeners) {
                 if (listener == until) {
                     break;
                 }
                 notifyListener(listener, changes);
-                if (changes.size() > 0) {
+                if (changeInfos.size() > 0) {
                     changes.addAll(changeInfos);
                     changes = new ArrayList<>(Utils.compileChanges(changes));
                     notifyListeners(listener);
@@ -181,19 +214,14 @@ public class DeepObservableList<T extends Component> implements List<T> {
         }
     }
 
-    private <E extends Component> void notifyListener(Listener<E> listener, List<ChangeInformation<T>> changes) {
+    private void notifyListener(Listener<T> listener, List<ChangeInformation<T>> changes) {
         beginBatchedUpdates();
-        List<ChangeInformation<E>> list = new ArrayList<>();
-        for (ChangeInformation<T> change : changes) {
-            //noinspection unchecked (E is super T and only output on ChangeInformation)
-            list.add((ChangeInformation<E>) change);
-        }
-        listener.onListChanged(list);
+        listener.onListChanged(changes);
         $endBatchedUpdates();
     }
 
-    private void check(Collection<? extends T> components){
-        for (T component : components){
+    private void check(Collection<? extends T> components) {
+        for (T component : components) {
             check(component);
         }
     }
@@ -229,13 +257,16 @@ public class DeepObservableList<T extends Component> implements List<T> {
     private void afterAdd(T component) {
         if (component instanceof Composite) {
             //noinspection unchecked
-            ((Composite<T>) component).getChildren().addListener(childListener);
+            DeepObservableList<T> children = ((Composite<T>) component).getChildren();
+            children.addListener(childListener);
+            children.setFilter(filter);
+            children.keepSorted(ordering);
         }
         changeInfos.add(new ChangeInformation.Add<>(component, this));
     }
 
     @Override
-    public T set(int index, T element) {
+    public synchronized T set(int index, T element) {
         check(element);
         beforeRemove(delegate.get(index));
         T component = delegate.set(index, element);
@@ -245,7 +276,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
     }
 
     @Override
-    public boolean add(T component) {
+    public synchronized boolean add(T component) {
         check(component);
         boolean result = delegate.add(component);
         afterAdd(component);
@@ -254,7 +285,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
     }
 
     @Override
-    public void add(int index, T element) {
+    public synchronized void add(int index, T element) {
         check(element);
         delegate.add(index, element);
         afterAdd(element);
@@ -262,7 +293,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
     }
 
     @Override
-    public T remove(int index) {
+    public synchronized T remove(int index) {
         beforeRemove(delegate.get(index));
         T component = delegate.remove(index);
         listChanged();
@@ -279,7 +310,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
         }
     }
 
-    public boolean remove(T o) {
+    public synchronized boolean remove(T o) {
         beforeRemove(o);
         boolean result = delegate.remove(o);
         listChanged();
@@ -287,7 +318,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
     }
 
     @Override
-    public boolean addAll(@NonNull Collection<? extends T> c) {
+    public synchronized boolean addAll(@NonNull Collection<? extends T> c) {
         check(c);
         boolean result = delegate.addAll(c);
         afterAdd(c);
@@ -296,7 +327,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
     }
 
     @Override
-    public boolean addAll(int index, @NonNull Collection<? extends T> c) {
+    public synchronized boolean addAll(int index, @NonNull Collection<? extends T> c) {
         check(c);
         boolean result = delegate.addAll(index, c);
         afterAdd(c);
@@ -305,7 +336,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
     }
 
     @Override
-    public boolean removeAll(@NonNull Collection<?> c) {
+    public synchronized boolean removeAll(@NonNull Collection<?> c) {
         try {
             //noinspection unchecked
             beforeRemove((Collection<? extends T>) c);
@@ -318,7 +349,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
     }
 
     @Override
-    public boolean retainAll(@NonNull Collection<?> c) {
+    public synchronized boolean retainAll(@NonNull Collection<?> c) {
         List<T> old = new ArrayList<>(this);
         //noinspection SuspiciousMethodCalls
         old.removeAll(c);
@@ -329,7 +360,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
     }
 
     @Override
-    public void clear() {
+    public synchronized void clear() {
         beforeRemove(this);
         delegate.clear();
         listChanged();
@@ -403,7 +434,7 @@ public class DeepObservableList<T extends Component> implements List<T> {
     @NonNull
     @Override
     public List<T> subList(int i, int i1) {
-        return delegate.subList(i, i1);
+        throw new UnsupportedOperationException();
     }
 
     public interface Listener<T extends Component> {
@@ -421,8 +452,10 @@ public class DeepObservableList<T extends Component> implements List<T> {
     private class ChildListener implements Listener<T> {
         @Override
         public void onListChanged(List<ChangeInformation<T>> changeInfo) {
-            changeInfos.addAll(changeInfo);
-            listChanged();
+            synchronized (DeepObservableList.this) {
+                changeInfos.addAll(changeInfo);
+                listChanged();
+            }
         }
     }
 
@@ -472,25 +505,34 @@ public class DeepObservableList<T extends Component> implements List<T> {
 
         @Override
         public void remove() {
-            beforeRemove(current);
-            delegate.remove();
+            synchronized (DeepObservableList.this) {
+                beforeRemove(current);
+                delegate.remove();
+                listChanged();
+            }
         }
 
         @Override
         public void set(T t) {
-            check(t);
-            beforeRemove(current);
-            delegate.set(t);
-            current = t;
-            afterAdd(current);
+            synchronized (DeepObservableList.this) {
+                check(t);
+                beforeRemove(current);
+                delegate.set(t);
+                current = t;
+                afterAdd(current);
+                listChanged();
+            }
         }
 
         @Override
         public void add(T t) {
-            check(t);
-            delegate.add(t);
-            current = t;
-            afterAdd(current);
+            synchronized (DeepObservableList.this) {
+                check(t);
+                delegate.add(t);
+                current = t;
+                afterAdd(current);
+                listChanged();
+            }
         }
     }
 

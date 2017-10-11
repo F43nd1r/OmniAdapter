@@ -180,6 +180,7 @@ public class OmniBuilder<T extends Component> {
                 deselectChildrenOnCollapse, selectionListeners,
                 enabledUndoActions, undoText, undoListeners, insetDpPerLevel, insetAsMargin);
         recyclerView.setAdapter(adapter);
+        adapter.attach(recyclerView);
         return adapter;
     }
 }

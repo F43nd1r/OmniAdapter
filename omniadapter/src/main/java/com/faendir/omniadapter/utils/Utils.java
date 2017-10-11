@@ -94,7 +94,8 @@ public final class Utils {
                 if (!list.isEmpty()) return list;
             }
         }
-        return new DeepObservableList<>(type);
+        //noinspection unchecked
+        return new DeepObservableList<T>((Class<T>) component.getClass());
     }
 
     public static <T extends Component> void expandUntilLevel(DeepObservableList<T> list, final OmniAdapter.Controller<T> controller, final int expandUntilLevel) {
@@ -105,7 +106,7 @@ public final class Utils {
                     ((Composite) component).getState().setExpanded(true);
                 }
             }
-        });
+        }, false);
     }
 
 
@@ -115,7 +116,7 @@ public final class Utils {
             public void visit(T component, int level) {
                 component.getState().setSelected(false);
             }
-        });
+        }, false);
     }
 
 
